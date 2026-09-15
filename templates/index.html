@@ -14,7 +14,8 @@
     --text-muted:     #898781;
     --gridline:       #e1e0d9;
     --border: rgba(11,11,11,0.10);
-    --seq-250: #86b6ef; --seq-350: #5598e7; --seq-450: #2a78d6; --seq-550: #1c5cab; --seq-650: #104281;
+    --brand-purple: #660099; --brand-purple-dark: #3d005c; --brand-magenta: #ec008c;
+    --seq-250: #caa3e0; --seq-350: #a463c9; --seq-450: #82449e; --seq-550: #660099; --seq-650: #45006b;
     --good: #0ca30c; --warn: #fab219;
   }
   @media (prefers-color-scheme: dark) {
@@ -23,7 +24,8 @@
       --surface-1: #1a1a19; --page-plane: #0d0d0d; --text-primary: #ffffff;
       --text-secondary: #c3c2b7; --text-muted: #898781; --gridline: #2c2c2a;
       --border: rgba(255,255,255,0.10);
-      --seq-250: #9ec5f4; --seq-350: #3987e5; --seq-450: #256abf; --seq-550: #184f95; --seq-650: #0d366b;
+      --brand-purple: #a636d6; --brand-purple-dark: #3d005c; --brand-magenta: #ff3fb0;
+      --seq-250: #d9b3ea; --seq-350: #bd7ade; --seq-450: #a04fcb; --seq-550: #a636d6; --seq-650: #6e0e94;
       --good: #0ca30c; --warn: #fab219;
     }
   }
@@ -32,15 +34,27 @@
     --surface-1: #1a1a19; --page-plane: #0d0d0d; --text-primary: #ffffff;
     --text-secondary: #c3c2b7; --text-muted: #898781; --gridline: #2c2c2a;
     --border: rgba(255,255,255,0.10);
-    --seq-250: #9ec5f4; --seq-350: #3987e5; --seq-450: #256abf; --seq-550: #184f95; --seq-650: #0d366b;
+    --brand-purple: #a636d6; --brand-purple-dark: #3d005c; --brand-magenta: #ff3fb0;
+    --seq-250: #d9b3ea; --seq-350: #bd7ade; --seq-450: #a04fcb; --seq-550: #a636d6; --seq-650: #6e0e94;
     --good: #0ca30c; --warn: #fab219;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
-  header { padding: 20px 28px 8px; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  h1 { font-size: 20px; margin: 0; font-weight: 600; }
-  #status { font-size: 13px; color: var(--text-muted); }
+  header {
+    padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%);
+    color: #ffffff;
+  }
+  .header-title { display: flex; flex-direction: column; gap: 2px; }
+  .header-title .brand-tag { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.75); }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; color: #ffffff; }
+  #status { font-size: 12px; color: rgba(255,255,255,0.8); }
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .brand-logo { background: #ffffff; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .brand-logo img { display: block; height: 26px; width: auto; }
   main { padding: 0 28px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  footer { padding: 18px 28px 28px; text-align: center; font-size: 12px; color: var(--text-muted); }
+  footer a { color: var(--brand-purple); text-decoration: none; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
   .row-4 { grid-column: span 4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .row-2 { grid-column: span 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -68,13 +82,21 @@
     font-size: 13px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
     background: var(--page-plane); color: var(--text-primary); min-width: 180px;
   }
+  .filter-field select:focus { outline: 2px solid var(--brand-purple); outline-offset: 1px; }
   #scope-label { font-size: 13px; color: var(--text-secondary); margin-left: auto; align-self: center; }
+  .stat-tile { border-top: 3px solid var(--brand-purple); }
 </style>
 </head>
 <body class="viz-root">
 <header>
-  <h1>Painel CRM <span id="scope-title"></span></h1>
-  <div id="status">carregando…</div>
+  <div class="header-title">
+    <span class="brand-tag">Vivo Empresas · Grupo Global</span>
+    <h1>Painel CRM <span id="scope-title"></span></h1>
+    <div id="status">carregando…</div>
+  </div>
+  <div class="header-right">
+    <div class="brand-logo"><img src="{{ url_for('static', filename='logo-grupo-global.png') }}" alt="Grupo Global"></div>
+  </div>
 </header>
 <main id="main">
   <div id="error-banner"></div>
@@ -174,6 +196,10 @@
     </table>
   </div>
 </main>
+
+<footer>
+  Grupo Global — parceiro autorizado Vivo Empresas · Desenvolvido por Isabela Ramos
+</footer>
 
 <script>
 const REFRESH_MS = {{ refresh_seconds * 1000 }};
