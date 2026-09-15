@@ -25,6 +25,7 @@ import time
 from flask import Flask, jsonify, render_template
 
 import odoo_client as crm
+import metas
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
 from hierarchy import build_user_id_map
 
@@ -49,7 +50,7 @@ _state = {"data": None, "updated_at": None, "error": None}
 def new_metric_bucket():
     return {
         "total": 0, "atendido": 0, "convertido": 0, "proposta_enviada": 0,
-        "aceite_enviado": 0, "concluido": 0, "em_tramite": 0,
+        "aceite_enviado": 0, "proposta_recusada": 0, "concluido": 0, "em_tramite": 0,
         "movimentacoes": 0,
         "revenue": {cat: {"qtd": 0, "receita": 0.0} for cat in REVENUE_CATEGORIES},
     }
@@ -69,6 +70,8 @@ def add_lead_to_bucket(bucket, stage_name, flags):
         bucket["proposta_enviada"] += 1
     if stage_name and stage_name.strip().upper() == "ACEITE ENVIADO":
         bucket["aceite_enviado"] += 1
+    if stage_name and stage_name.strip().upper() == "PROPOSTA RECUSADA":
+        bucket["proposta_recusada"] += 1
 
 
 def hierarchy_buckets(pv_tree, uid_map, user_id):
@@ -80,7 +83,9 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
         return None
     pv_node = pv_tree.setdefault(info["pv"], {"metrics": new_metric_bucket(), "supervisors": {}})
     sup_name = info["supervisor"] or "(sem supervisor)"
-    sup_node = pv_node["supervisors"].setdefault(sup_name, {"metrics": new_metric_bucket(), "consultores": {}})
+    sup_node = pv_node["supervisors"].setdefault(
+        sup_name, {"metrics": new_metric_bucket(), "consultores": {}, "equipe": info["equipe"]},
+    )
     cons_bucket = sup_node["consultores"].setdefault(info["nome"], new_metric_bucket())
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
 
@@ -187,22 +192,34 @@ def compute_period_metrics(start_dt, label, uid_map):
     top_consultores = sorted(mv_counts.values(), key=lambda x: -x["movimentacoes"])[:15]
 
     # ---------- Monta a árvore final PV -> Supervisor -> Consultor ----------
+    # Cada nível ganha também "meta": {RECEITA_TOTAL, QUANTIDADE_BL,
+    # RECEITA_RENOVACAO, RECEITA_APARELHOS} — metas de config/metas.xlsx
+    # (equipe = meta do supervisor daquela equipe; consultor = meta individual;
+    # PV = soma das metas das equipes/supervisores daquele PV).
     hierarchy = []
     for pv, pv_node in sorted(pv_tree.items()):
         round_bucket_revenue(pv_node["metrics"])
         supervisors = []
+        pv_metas = []
         for sup, sup_node in sorted(pv_node["supervisors"].items(), key=lambda x: -x[1]["metrics"]["convertido"]):
             round_bucket_revenue(sup_node["metrics"])
+            sup_meta = metas.meta_for_equipe(sup_node.get("equipe"))
+            pv_metas.append(sup_meta)
             consultores = []
-            for nome, metrics in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
-                round_bucket_revenue(metrics)
-                consultores.append({"nome": nome, **metrics})
-            supervisors.append({"supervisor": sup, **sup_node["metrics"], "consultores": consultores})
-        hierarchy.append({"pv": pv, **pv_node["metrics"], "supervisors": supervisors})
+            for nome, metrics_bucket in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
+                round_bucket_revenue(metrics_bucket)
+                consultores.append({"nome": nome, "meta": metas.meta_for_usuario(nome), **metrics_bucket})
+            supervisors.append({
+                "supervisor": sup, "meta": sup_meta, **sup_node["metrics"], "consultores": consultores,
+            })
+        hierarchy.append({
+            "pv": pv, "meta": metas.sum_metas(*pv_metas), **pv_node["metrics"], "supervisors": supervisors,
+        })
 
     return {
         "label": label,
         "root": root,
+        "root_meta": metas.sum_metas(*[pv["meta"] for pv in hierarchy]),
         "team_ranking": team_ranking,
         "top_consultores": top_consultores,
         "hierarchy": hierarchy,
@@ -250,6 +267,14 @@ def refresh_loop():
 @app.route("/")
 def index():
     return render_template("index.html", refresh_seconds=REFRESH_SECONDS)
+
+
+@app.route("/tv")
+def tv():
+    return render_template(
+        "tv.html", refresh_seconds=REFRESH_SECONDS,
+        slide_seconds=int(os.environ.get("TV_SLIDE_SECONDS", "12")),
+    )
 
 
 @app.route("/api/data")
