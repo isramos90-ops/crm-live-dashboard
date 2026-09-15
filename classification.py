@@ -56,11 +56,30 @@ def load_revenue_sets():
 STAGE_MAP = load_stage_map()
 SOLIC_SETS, PROD_SETS = load_revenue_sets()
 
+# Etapas que a Isabela NÃO considera como "movimentação" quando um lead entra
+# nelas (confirmado em 2026-09-15) — mesmo sendo uma mudança de etapa
+# registrada em mail.tracking.value, não deve contar no ranking/total de
+# movimentações de consultor. Qualquer etapa fora desta lista conta como
+# movimentação normalmente.
+NON_MOVEMENT_STAGES = {
+    "AGUARDANDO INTERAÇÃO",
+    "TENTATIVA DE CONTATO",
+    "CLIENTE JA RENOVADO",
+    "CORRECAO CONSULTOR",
+    "ATUALIZACOES POR ROBO",
+}
+NON_MOVEMENT_STAGES_NORM = {norm(s) for s in NON_MOVEMENT_STAGES}
+
 
 def classify_stage(stage_name):
     return STAGE_MAP.get(norm(stage_name), {
         "atendido": False, "convertido": False, "concluido": False, "em_tramite": False,
     })
+
+
+def is_movement_stage(stage_name):
+    """True se uma mudança PARA esta etapa deve contar como 'movimentação'."""
+    return norm(stage_name) not in NON_MOVEMENT_STAGES_NORM
 
 
 def line_matches_category(categ_name, req_name, category):

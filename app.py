@@ -1,5 +1,6 @@
 """
 Painel CRM — Resumo do Mês (metodologia oficial) + Movimentações + Ranking
++ Filtro PV / Supervisor / Consultor + seletor de período (mês atual / 60 dias)
 
 Atualiza os dados do CRM em segundo plano a cada REFRESH_SECONDS (padrão: 1h)
 e serve um JSON agregado em /api/data. O front-end consulta esse endpoint
@@ -9,6 +10,11 @@ Todas as classificações (ATENDIDO/CONVERTIDO/CONCLUIDO/EM TRAMITE e as 4
 categorias de receita) seguem a metodologia oficial enviada pela Isabela,
 carregada de config/etapas_estagio.xlsx e config/classificacao_receita.xlsx
 (ver classification.py).
+
+Cada período (mês atual, últimos 60 dias) é calculado com as mesmas métricas
+(funil, produção, receita, movimentações), tanto no total geral ("Todos")
+quanto quebrado por PV → Supervisor → Consultor (config/hierarquia_usuarios.xlsx,
+ver hierarchy.py), para alimentar o filtro no front-end.
 """
 import datetime as dt
 import logging
@@ -19,7 +25,8 @@ import time
 from flask import Flask, jsonify, render_template
 
 import odoo_client as crm
-from classification import classify_stage, line_matches_category, REVENUE_CATEGORIES
+from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
+from hierarchy import build_user_id_map
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("dashboard")
@@ -28,136 +35,199 @@ app = Flask(__name__)
 
 REFRESH_SECONDS = int(os.environ.get("REFRESH_SECONDS", "3600"))  # 1h por padrão
 
-# uid de contas técnicas/sistema a excluir dos rankings de consultor
+# uid de contas técnicas/sistema a excluir dos rankings/atribuição de consultor
 SYSTEM_USER_IDS = {int(x) for x in os.environ.get("SYSTEM_USER_IDS", "1").split(",") if x}
 
 STAGE_TRACKING_FIELD_ID = int(os.environ.get("STAGE_TRACKING_FIELD_ID", "6197"))
+
+LAST_N_DAYS = int(os.environ.get("LAST_N_DAYS", "60"))
 
 _state_lock = threading.Lock()
 _state = {"data": None, "updated_at": None, "error": None}
 
 
-def _month_start_str():
-    now = dt.datetime.utcnow()
-    return now.strftime("%Y-%m-01 00:00:00")
-
-
-def _month_label():
-    now = dt.datetime.utcnow()
-    return now.strftime("%m/%Y")
-
-
-def collect_data():
-    month_start = _month_start_str()
-
-    # ---------- Leads do mês, por etapa ----------
-    # NOTA: read_group em crm.lead neste CRM retorna uma contagem menor que a
-    # real (bug/limitação observada no servidor — provavelmente alguma regra
-    # de agregação customizada do módulo _plus_access). Por isso buscamos os
-    # registros individuais (leve: só 2 campos) e agregamos aqui em Python,
-    # igual à abordagem já validada no relatório mensal.
-    leads = crm.search_read(
-        "crm.lead", [["create_date", ">=", month_start]],
-        fields=["stage_id", "team_id"], limit=0,
-    )
-    total_leads = len(leads)
-    qtd_atendido = qtd_convertido = qtd_concluido = qtd_tramite = 0
-    qtd_proposta = qtd_aceite = 0
-    for l in leads:
-        stage_name = l["stage_id"][1] if l.get("stage_id") else None
-        flags = classify_stage(stage_name)
-        if flags["atendido"]:
-            qtd_atendido += 1
-        if flags["convertido"]:
-            qtd_convertido += 1
-        if flags["concluido"]:
-            qtd_concluido += 1
-        if flags["em_tramite"]:
-            qtd_tramite += 1
-        if stage_name and stage_name.strip().upper() == "PROPOSTA ENVIADA":
-            qtd_proposta += 1
-        if stage_name and stage_name.strip().upper() == "ACEITE ENVIADO":
-            qtd_aceite += 1
-
-    def pct(n):
-        return round(100.0 * n / total_leads, 1) if total_leads else 0.0
-
-    funil = {
-        "total_leads": total_leads,
-        "atendido": {"count": qtd_atendido, "pct": pct(qtd_atendido)},
-        "convertido": {"count": qtd_convertido, "pct": pct(qtd_convertido)},
-        "proposta_enviada": qtd_proposta,
-        "aceite_enviado": qtd_aceite,
-        "concluido": qtd_concluido,
-        "em_tramite": qtd_tramite,
+def new_metric_bucket():
+    return {
+        "total": 0, "atendido": 0, "convertido": 0, "proposta_enviada": 0,
+        "aceite_enviado": 0, "concluido": 0, "em_tramite": 0,
+        "movimentacoes": 0,
+        "revenue": {cat: {"qtd": 0, "receita": 0.0} for cat in REVENUE_CATEGORIES},
     }
 
-    # ---------- Ranking por equipe (mesmo cohort do mês) ----------
+
+def add_lead_to_bucket(bucket, stage_name, flags):
+    bucket["total"] += 1
+    if flags["atendido"]:
+        bucket["atendido"] += 1
+    if flags["convertido"]:
+        bucket["convertido"] += 1
+    if flags["concluido"]:
+        bucket["concluido"] += 1
+    if flags["em_tramite"]:
+        bucket["em_tramite"] += 1
+    if stage_name and stage_name.strip().upper() == "PROPOSTA ENVIADA":
+        bucket["proposta_enviada"] += 1
+    if stage_name and stage_name.strip().upper() == "ACEITE ENVIADO":
+        bucket["aceite_enviado"] += 1
+
+
+def hierarchy_buckets(pv_tree, uid_map, user_id):
+    """Retorna [bucket_pv, bucket_supervisor, bucket_consultor] para o
+    usuário do CRM informado, criando os nós que faltarem — ou None se o
+    usuário não está mapeado na hierarquia (fora do escopo do drill-down)."""
+    info = uid_map.get(user_id) if user_id else None
+    if not info:
+        return None
+    pv_node = pv_tree.setdefault(info["pv"], {"metrics": new_metric_bucket(), "supervisors": {}})
+    sup_name = info["supervisor"] or "(sem supervisor)"
+    sup_node = pv_node["supervisors"].setdefault(sup_name, {"metrics": new_metric_bucket(), "consultores": {}})
+    cons_bucket = sup_node["consultores"].setdefault(info["nome"], new_metric_bucket())
+    return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
+
+
+def compute_period_metrics(start_dt, label, uid_map):
+    start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    root = new_metric_bucket()
+    pv_tree = {}
+    leads_fora_do_escopo = 0
+
+    # ---------- Leads do período, por etapa ----------
+    # NOTA: read_group em crm.lead neste CRM retorna uma contagem menor que a
+    # real (bug/limitação observada no servidor). Por isso buscamos os
+    # registros individuais (leve: só 3 campos) e agregamos aqui em Python.
+    leads = crm.search_read(
+        "crm.lead", [["create_date", ">=", start_str]],
+        fields=["stage_id", "team_id", "user_id"], limit=0,
+    )
+
     teams = {}
     for l in leads:
-        team_name = l["team_id"][1] if l.get("team_id") else "(sem equipe)"
         stage_name = l["stage_id"][1] if l.get("stage_id") else None
         flags = classify_stage(stage_name)
+
+        add_lead_to_bucket(root, stage_name, flags)
+
+        team_name = l["team_id"][1] if l.get("team_id") else "(sem equipe)"
         t = teams.setdefault(team_name, {"total": 0, "atendido": 0, "convertido": 0})
         t["total"] += 1
         if flags["atendido"]:
             t["atendido"] += 1
         if flags["convertido"]:
             t["convertido"] += 1
+
+        user = l.get("user_id")
+        buckets = hierarchy_buckets(pv_tree, uid_map, user[0] if user else None)
+        if not buckets:
+            leads_fora_do_escopo += 1
+            continue
+        for b in buckets:
+            add_lead_to_bucket(b, stage_name, flags)
+
     team_ranking = sorted(
         [{"equipe": k, **v} for k, v in teams.items()],
         key=lambda x: -x["convertido"],
-    )
+    )[:20]
 
-    # ---------- Receita do mês (linhas de pedido) ----------
-    line_rg = crm.read_group(
-        "sale.order.line",
-        [["create_date", ">=", month_start]],
-        ["price_total:sum"],
-        ["request_type_id", "product_id"],
+    # ---------- Receita do período (linhas de pedido) ----------
+    lines = crm.search_read(
+        "sale.order.line", [["create_date", ">=", start_str]],
+        fields=["product_id", "request_type_id", "price_total", "salesman_id"], limit=0,
     )
-    product_ids = sorted({r["product_id"][0] for r in line_rg if r.get("product_id")})
+    product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
     prod_categ = {}
     if product_ids:
         prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
         prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
 
-    revenue = {cat: {"qtd": 0, "receita": 0.0} for cat in REVENUE_CATEGORIES}
-    for r in line_rg:
+    for r in lines:
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
         categ_name = prod_categ.get(prod_id)
+        price = r.get("price_total") or 0.0
+        salesman = r.get("salesman_id")
+        buckets = hierarchy_buckets(pv_tree, uid_map, salesman[0] if salesman else None)
         for cat in REVENUE_CATEGORIES:
             if line_matches_category(categ_name, req_name, cat):
-                revenue[cat]["qtd"] += r["__count"]
-                revenue[cat]["receita"] += r.get("price_total") or 0.0
-    for cat in revenue:
-        revenue[cat]["receita"] = round(revenue[cat]["receita"], 2)
+                root["revenue"][cat]["qtd"] += 1
+                root["revenue"][cat]["receita"] += price
+                if buckets:
+                    for b in buckets:
+                        b["revenue"][cat]["qtd"] += 1
+                        b["revenue"][cat]["receita"] += price
+    root["revenue"] = {c: {"qtd": v["qtd"], "receita": round(v["receita"], 2)} for c, v in root["revenue"].items()}
 
-    # ---------- Movimentações de etapa no mês, por consultor ----------
-    mv_rg = crm.read_group(
+    def round_bucket_revenue(bucket):
+        bucket["revenue"] = {c: {"qtd": v["qtd"], "receita": round(v["receita"], 2)} for c, v in bucket["revenue"].items()}
+
+    # ---------- Movimentações de etapa no período, por consultor ----------
+    # Busca os registros individuais (em vez de read_group) para poder
+    # filtrar por etapa de destino (new_value_char): algumas etapas não
+    # contam como "movimentação" (ver classification.NON_MOVEMENT_STAGES).
+    mv_records = crm.search_read(
         "mail.tracking.value",
-        [["field_id", "=", STAGE_TRACKING_FIELD_ID], ["create_date", ">=", month_start]],
-        [],
-        ["create_uid"],
+        [["field_id", "=", STAGE_TRACKING_FIELD_ID], ["create_date", ">=", start_str]],
+        fields=["create_uid", "new_value_char"], limit=0,
     )
-    total_movimentacoes = sum(r["__count"] for r in mv_rg)
-    top_consultores = sorted(
-        [
-            {"consultor": r["create_uid"][1], "movimentacoes": r["__count"]}
-            for r in mv_rg
-            if r.get("create_uid") and r["create_uid"][0] not in SYSTEM_USER_IDS
-        ],
-        key=lambda x: -x["movimentacoes"],
-    )[:15]
+    mv_counts = {}
+    for r in mv_records:
+        if not is_movement_stage(r.get("new_value_char")):
+            continue
+        root["movimentacoes"] += 1
+        cu = r.get("create_uid")
+        if not cu:
+            continue
+        if cu[0] not in SYSTEM_USER_IDS:
+            entry = mv_counts.setdefault(cu[0], {"consultor": cu[1], "movimentacoes": 0})
+            entry["movimentacoes"] += 1
+        buckets = hierarchy_buckets(pv_tree, uid_map, cu[0])
+        if buckets:
+            for b in buckets:
+                b["movimentacoes"] += 1
+    top_consultores = sorted(mv_counts.values(), key=lambda x: -x["movimentacoes"])[:15]
+
+    # ---------- Monta a árvore final PV -> Supervisor -> Consultor ----------
+    hierarchy = []
+    for pv, pv_node in sorted(pv_tree.items()):
+        round_bucket_revenue(pv_node["metrics"])
+        supervisors = []
+        for sup, sup_node in sorted(pv_node["supervisors"].items(), key=lambda x: -x[1]["metrics"]["convertido"]):
+            round_bucket_revenue(sup_node["metrics"])
+            consultores = []
+            for nome, metrics in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
+                round_bucket_revenue(metrics)
+                consultores.append({"nome": nome, **metrics})
+            supervisors.append({"supervisor": sup, **sup_node["metrics"], "consultores": consultores})
+        hierarchy.append({"pv": pv, **pv_node["metrics"], "supervisors": supervisors})
 
     return {
-        "mes": _month_label(),
-        "funil": funil,
-        "revenue": revenue,
-        "team_ranking": team_ranking[:20],
-        "total_movimentacoes": total_movimentacoes,
+        "label": label,
+        "root": root,
+        "team_ranking": team_ranking,
         "top_consultores": top_consultores,
+        "hierarchy": hierarchy,
+        "leads_fora_do_escopo": leads_fora_do_escopo,
+    }
+
+
+def collect_data():
+    now = dt.datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_n_start = now - dt.timedelta(days=LAST_N_DAYS)
+
+    uid_map = build_user_id_map(crm.search_read)
+
+    month = compute_period_metrics(month_start, now.strftime("%m/%Y"), uid_map)
+    last_n_label = "Últimos {}d ({} a {})".format(
+        LAST_N_DAYS, last_n_start.strftime("%d/%m"), now.strftime("%d/%m"),
+    )
+    last_n = compute_period_metrics(last_n_start, last_n_label, uid_map)
+
+    return {
+        "periods": {
+            "month": month,
+            "last_n": last_n,
+        },
     }
 
 

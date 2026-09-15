@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel CRM — PV / Supervisor / Consultor</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border: rgba(11,11,11,0.10);
+    --seq-250: #86b6ef; --seq-350: #5598e7; --seq-450: #2a78d6; --seq-550: #1c5cab; --seq-650: #104281;
+    --good: #0ca30c; --warn: #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page-plane: #0d0d0d; --text-primary: #ffffff;
+      --text-secondary: #c3c2b7; --text-muted: #898781; --gridline: #2c2c2a;
+      --border: rgba(255,255,255,0.10);
+      --seq-250: #9ec5f4; --seq-350: #3987e5; --seq-450: #256abf; --seq-550: #184f95; --seq-650: #0d366b;
+      --good: #0ca30c; --warn: #fab219;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page-plane: #0d0d0d; --text-primary: #ffffff;
+    --text-secondary: #c3c2b7; --text-muted: #898781; --gridline: #2c2c2a;
+    --border: rgba(255,255,255,0.10);
+    --seq-250: #9ec5f4; --seq-350: #3987e5; --seq-450: #256abf; --seq-550: #184f95; --seq-650: #0d366b;
+    --good: #0ca30c; --warn: #fab219;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  header { padding: 20px 28px 8px; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  #status { font-size: 13px; color: var(--text-muted); }
+  main { padding: 0 28px 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .row-4 { grid-column: span 4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .row-2 { grid-column: span 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .stat-tile .label { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .stat-tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: proportional-nums; }
+  .stat-tile .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  h2 { font-size: 15px; margin: 0 0 14px; font-weight: 600; }
+  .bar-card { grid-column: span 2; }
+  .bar-row { display: grid; grid-template-columns: 150px 1fr 70px; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row .lbl { font-size: 13px; color: var(--text-secondary); }
+  .track { background: var(--gridline); border-radius: 4px; height: 16px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; }
+  .bar-row .n { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+  .table-card { grid-column: span 2; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--gridline); }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  #error-banner { display: none; grid-column: span 4; background: #fdecea; border: 1px solid #e34948; color: #7a2020; padding: 12px 16px; border-radius: 8px; font-size: 13px; }
+
+  .filter-bar { grid-column: span 4; display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+  .filter-field label { font-size: 12px; color: var(--text-muted); }
+  .filter-field select {
+    font-size: 13px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--page-plane); color: var(--text-primary); min-width: 180px;
+  }
+  #scope-label { font-size: 13px; color: var(--text-secondary); margin-left: auto; align-self: center; }
+</style>
+</head>
+<body class="viz-root">
+<header>
+  <h1>Painel CRM <span id="scope-title"></span></h1>
+  <div id="status">carregando…</div>
+</header>
+<main id="main">
+  <div id="error-banner"></div>
+
+  <div class="card filter-bar">
+    <div class="filter-field">
+      <label>Período</label>
+      <select id="f-periodo" onchange="onPeriodChange()">
+        <option value="month">Mês atual</option>
+        <option value="last_n">Últimos 60 dias</option>
+      </select>
+    </div>
+    <div class="filter-field">
+      <label>PV</label>
+      <select id="f-pv" onchange="onPvChange()"><option value="__all__">Todos</option></select>
+    </div>
+    <div class="filter-field">
+      <label>Supervisor</label>
+      <select id="f-sup" onchange="onSupChange()"><option value="__all__">Todos</option></select>
+    </div>
+    <div class="filter-field">
+      <label>Consultor</label>
+      <select id="f-cons" onchange="onConsChange()"><option value="__all__">Todos</option></select>
+    </div>
+    <div id="scope-label"></div>
+  </div>
+
+  <div class="row-4">
+    <div class="card stat-tile">
+      <div class="label">Leads totais</div>
+      <div class="value" id="k-total">—</div>
+      <div class="sub" id="k-total-sub">Coorte por data de criação</div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Atendido</div>
+      <div class="value" id="k-atendido">—</div>
+      <div class="sub" id="k-atendido-pct"></div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Convertido</div>
+      <div class="value" id="k-convertido">—</div>
+      <div class="sub" id="k-convertido-pct"></div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Movimentações de etapa</div>
+      <div class="value" id="k-mov">—</div>
+      <div class="sub" id="k-mov-sub">No escopo selecionado</div>
+    </div>
+  </div>
+
+  <div class="card bar-card">
+    <h2>Funil de propostas</h2>
+    <div id="funil-body"></div>
+  </div>
+
+  <div class="card bar-card">
+    <h2>Produção: Concluído x Em Trâmite</h2>
+    <div id="producao-body"></div>
+  </div>
+
+  <div class="row-4">
+    <div class="card stat-tile">
+      <div class="label">Receita total</div>
+      <div class="value" id="r-total">—</div>
+      <div class="sub" id="r-total-qtd"></div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Receita de renovação</div>
+      <div class="value" id="r-renov">—</div>
+      <div class="sub" id="r-renov-qtd"></div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Qtd. banda larga</div>
+      <div class="value" id="r-bl">—</div>
+      <div class="sub" id="r-bl-receita"></div>
+    </div>
+    <div class="card stat-tile">
+      <div class="label">Receita de aparelho</div>
+      <div class="value" id="r-ap">—</div>
+      <div class="sub" id="r-ap-qtd"></div>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <h2>Ranking por equipe <span id="team-period-label"></span></h2>
+    <table>
+      <thead><tr><th>Equipe</th><th style="text-align:right">Total</th><th style="text-align:right">Atendido</th><th style="text-align:right">Convertido</th></tr></thead>
+      <tbody id="team-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card table-card">
+    <h2>Ranking por consultor <span id="cons-scope-label"></span></h2>
+    <table>
+      <thead><tr><th>Consultor</th><th style="text-align:right">Movimentações</th><th style="text-align:right">Total</th><th style="text-align:right">Convertido</th></tr></thead>
+      <tbody id="user-body"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const REFRESH_MS = {{ refresh_seconds * 1000 }};
+const BLUE = ["var(--seq-250)","var(--seq-350)","var(--seq-450)","var(--seq-550)","var(--seq-650)"];
+const ALL = "__all__";
+
+let LAST_DATA = null; // last "data" payload from /api/data (contains .periods.month / .periods.last_n)
+
+function fmtBRL(v) { return (v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+function fmtNum(v) { return (v || 0).toLocaleString('pt-BR'); }
+function fmtPct(n, total) { return total ? (100 * n / total).toFixed(1) + '%' : '0%'; }
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+}
+
+async function fetchData() {
+  try {
+    const res = await fetch('/api/data');
+    onNewState(await res.json());
+  } catch (e) {
+    document.getElementById('status').textContent = 'Erro ao buscar dados: ' + e;
+  }
+}
+
+function bar(container, rows, colorList) {
+  const max = Math.max(1, ...rows.map(r => r.value));
+  container.innerHTML = rows.map((r, i) => `
+    <div class="bar-row">
+      <div class="lbl">${r.label}</div>
+      <div class="track"><div class="fill" style="width:${(r.value/max*100).toFixed(1)}%; background:${colorList[i % colorList.length]}"></div></div>
+      <div class="n">${fmtNum(r.value)}</div>
+    </div>
+  `).join('');
+}
+
+function onNewState(state) {
+  const statusEl = document.getElementById('status');
+  const errorEl = document.getElementById('error-banner');
+  if (state.error) {
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Última atualização falhou: ' + state.error + ' — mostrando dados anteriores.';
+  } else {
+    errorEl.style.display = 'none';
+  }
+  statusEl.textContent = state.updated_at ? ('Atualizado em ' + fmtTime(state.updated_at)) : 'Aguardando primeira atualização…';
+
+  if (!state.data) return;
+  LAST_DATA = state.data;
+  refreshPvOptions();
+  update();
+}
+
+function currentPeriod() {
+  return LAST_DATA.periods[document.getElementById('f-periodo').value];
+}
+
+function populateSelect(sel, items, keepIfPossible) {
+  const prev = sel.value;
+  sel.innerHTML = '<option value="' + ALL + '">Todos</option>' + items.map(i => `<option value="${i}">${i}</option>`).join('');
+  sel.value = (keepIfPossible && items.includes(prev)) ? prev : ALL;
+}
+
+function onPeriodChange() { refreshPvOptions(); }
+function onPvChange() { refreshSupOptions(); update(); }
+function onSupChange() { refreshConsOptions(); update(); }
+function onConsChange() { update(); }
+
+function refreshPvOptions() {
+  const period = currentPeriod();
+  populateSelect(document.getElementById('f-pv'), period.hierarchy.map(p => p.pv), true);
+  refreshSupOptions();
+}
+function refreshSupOptions() {
+  const period = currentPeriod();
+  const pv = period.hierarchy.find(p => p.pv === document.getElementById('f-pv').value);
+  populateSelect(document.getElementById('f-sup'), pv ? pv.supervisors.map(s => s.supervisor) : [], true);
+  refreshConsOptions();
+}
+function refreshConsOptions() {
+  const period = currentPeriod();
+  const pv = period.hierarchy.find(p => p.pv === document.getElementById('f-pv').value);
+  const sup = pv && pv.supervisors.find(s => s.supervisor === document.getElementById('f-sup').value);
+  populateSelect(document.getElementById('f-cons'), sup ? sup.consultores.map(c => c.nome) : [], true);
+  update();
+}
+
+function selectedScope() {
+  const period = currentPeriod();
+  const pvSel = document.getElementById('f-pv').value;
+  const supSel = document.getElementById('f-sup').value;
+  const consSel = document.getElementById('f-cons').value;
+
+  if (pvSel === ALL) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo, period };
+  const pv = period.hierarchy.find(p => p.pv === pvSel);
+  if (!pv) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo, period };
+
+  if (supSel === ALL) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0, period };
+  const sup = pv.supervisors.find(s => s.supervisor === supSel);
+  if (!sup) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0, period };
+
+  if (consSel === ALL) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0, period };
+  const cons = sup.consultores.find(c => c.nome === consSel);
+  if (!cons) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0, period };
+  return { bucket: cons, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor + ' · ' + cons.nome, fora: 0, period };
+}
+
+function flattenConsultores(period, pvSel, supSel) {
+  const pvs = pvSel === ALL ? period.hierarchy : period.hierarchy.filter(p => p.pv === pvSel);
+  const out = [];
+  for (const pv of pvs) {
+    const sups = supSel === ALL ? pv.supervisors : pv.supervisors.filter(s => s.supervisor === supSel);
+    for (const s of sups) {
+      for (const c of s.consultores) out.push(c);
+    }
+  }
+  return out;
+}
+
+function update() {
+  const { bucket, label, fora, period } = selectedScope();
+
+  document.getElementById('scope-title').textContent = '— ' + period.label + ' · ' + label;
+  document.getElementById('scope-label').textContent = fora
+    ? `${fmtNum(fora)} leads fora do escopo do filtro (equipe não mapeada ou sem consultor)`
+    : '';
+
+  document.getElementById('k-total').textContent = fmtNum(bucket.total);
+  document.getElementById('k-atendido').textContent = fmtNum(bucket.atendido);
+  document.getElementById('k-atendido-pct').textContent = fmtPct(bucket.atendido, bucket.total) + ' dos leads';
+  document.getElementById('k-convertido').textContent = fmtNum(bucket.convertido);
+  document.getElementById('k-convertido-pct').textContent = fmtPct(bucket.convertido, bucket.total) + ' dos leads';
+  document.getElementById('k-mov').textContent = fmtNum(bucket.movimentacoes);
+
+  bar(document.getElementById('funil-body'), [
+    {label: 'Proposta enviada', value: bucket.proposta_enviada},
+    {label: 'Aceite enviado', value: bucket.aceite_enviado},
+  ], BLUE);
+
+  bar(document.getElementById('producao-body'), [
+    {label: 'Concluído', value: bucket.concluido},
+    {label: 'Em trâmite', value: bucket.em_tramite},
+  ], BLUE);
+
+  const r = bucket.revenue;
+  document.getElementById('r-total').textContent = fmtBRL(r['RECEITA TOTAL'].receita);
+  document.getElementById('r-total-qtd').textContent = fmtNum(r['RECEITA TOTAL'].qtd) + ' linhas';
+  document.getElementById('r-renov').textContent = fmtBRL(r['RENOVAÇÃO'].receita);
+  document.getElementById('r-renov-qtd').textContent = fmtNum(r['RENOVAÇÃO'].qtd) + ' linhas';
+  document.getElementById('r-bl').textContent = fmtNum(r['BANDA LARGA'].qtd);
+  document.getElementById('r-bl-receita').textContent = fmtBRL(r['BANDA LARGA'].receita);
+  document.getElementById('r-ap').textContent = fmtBRL(r['APARELHO'].receita);
+  document.getElementById('r-ap-qtd').textContent = fmtNum(r['APARELHO'].qtd) + ' linhas';
+
+  document.getElementById('team-period-label').textContent = '(' + period.label + ')';
+  document.getElementById('team-body').innerHTML = (period.team_ranking || []).map(t => `
+    <tr><td>${t.equipe}</td><td style="text-align:right">${fmtNum(t.total)}</td><td style="text-align:right">${fmtNum(t.atendido)}</td><td style="text-align:right">${fmtNum(t.convertido)}</td></tr>
+  `).join('') || '<tr><td colspan="4">Sem dados</td></tr>';
+
+  const pvSel = document.getElementById('f-pv').value;
+  const supSel = document.getElementById('f-sup').value;
+  const consultores = flattenConsultores(period, pvSel, supSel)
+    .sort((a, b) => b.movimentacoes - a.movimentacoes)
+    .slice(0, 15);
+  document.getElementById('cons-scope-label').textContent = '(' + label + ')';
+  document.getElementById('user-body').innerHTML = consultores.map(c => `
+    <tr><td>${c.nome}</td><td style="text-align:right">${fmtNum(c.movimentacoes)}</td><td style="text-align:right">${fmtNum(c.total)}</td><td style="text-align:right">${fmtNum(c.convertido)}</td></tr>
+  `).join('') || '<tr><td colspan="4">Sem dados</td></tr>';
+}
+
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+</body>
+</html>
