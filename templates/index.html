@@ -288,24 +288,38 @@ function refreshConsOptions() {
   update();
 }
 
+function scopeInPeriod(period, pvSel, supSel, consSel) {
+  if (pvSel === ALL) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo };
+  const pv = period.hierarchy.find(p => p.pv === pvSel);
+  if (!pv) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo };
+
+  if (supSel === ALL) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0 };
+  const sup = pv.supervisors.find(s => s.supervisor === supSel);
+  if (!sup) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0 };
+
+  if (consSel === ALL) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0 };
+  const cons = sup.consultores.find(c => c.nome === consSel);
+  if (!cons) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0 };
+  return { bucket: cons, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor + ' · ' + cons.nome, fora: 0 };
+}
+
 function selectedScope() {
   const period = currentPeriod();
   const pvSel = document.getElementById('f-pv').value;
   const supSel = document.getElementById('f-sup').value;
   const consSel = document.getElementById('f-cons').value;
+  return { ...scopeInPeriod(period, pvSel, supSel, consSel), period };
+}
 
-  if (pvSel === ALL) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo, period };
-  const pv = period.hierarchy.find(p => p.pv === pvSel);
-  if (!pv) return { bucket: period.root, label: 'Todos', fora: period.leads_fora_do_escopo, period };
-
-  if (supSel === ALL) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0, period };
-  const sup = pv.supervisors.find(s => s.supervisor === supSel);
-  if (!sup) return { bucket: pv, label: 'PV: ' + pv.pv, fora: 0, period };
-
-  if (consSel === ALL) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0, period };
-  const cons = sup.consultores.find(c => c.nome === consSel);
-  if (!cons) return { bucket: sup, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor, fora: 0, period };
-  return { bucket: cons, label: 'PV: ' + pv.pv + ' · Sup.: ' + sup.supervisor + ' · ' + cons.nome, fora: 0, period };
+// A receita (e a comparação com meta) é sempre do mês atual, independente
+// do seletor de Período (que só afeta leads/movimentações/funil) — pedido
+// da Isabela em 2026-09-15.
+function revenueScope() {
+  const month = LAST_DATA.periods.month;
+  const pvSel = document.getElementById('f-pv').value;
+  const supSel = document.getElementById('f-sup').value;
+  const consSel = document.getElementById('f-cons').value;
+  return { ...scopeInPeriod(month, pvSel, supSel, consSel), period: month };
 }
 
 function flattenConsultores(period, pvSel, supSel) {
@@ -323,10 +337,14 @@ function flattenConsultores(period, pvSel, supSel) {
 function update() {
   const { bucket, label, fora, period } = selectedScope();
 
+  const month = LAST_DATA.periods.month;
+  const forcados = month.pedidos_mes_atual_count || 0;
+  const notas = [];
+  if (fora) notas.push(`${fmtNum(fora)} leads fora do escopo do filtro (equipe não mapeada ou sem consultor)`);
+  if (forcados) notas.push(`${fmtNum(forcados)} pedido(s) de mês anterior incluído(s) na receita deste mês`);
+
   document.getElementById('scope-title').textContent = '— ' + period.label + ' · ' + label;
-  document.getElementById('scope-label').textContent = fora
-    ? `${fmtNum(fora)} leads fora do escopo do filtro (equipe não mapeada ou sem consultor)`
-    : '';
+  document.getElementById('scope-label').textContent = notas.join(' · ');
 
   document.getElementById('k-total').textContent = fmtNum(bucket.total);
   document.getElementById('k-atendido').textContent = fmtNum(bucket.atendido);
@@ -345,9 +363,10 @@ function update() {
     {label: 'Em trâmite', value: bucket.em_tramite},
   ], BLUE);
 
-  const r = bucket.revenue;
+  const revScope = revenueScope();
+  const r = revScope.bucket.revenue;
   document.getElementById('r-total').textContent = fmtBRL(r['RECEITA TOTAL'].receita);
-  document.getElementById('r-total-qtd').textContent = fmtNum(r['RECEITA TOTAL'].qtd) + ' linhas';
+  document.getElementById('r-total-qtd').textContent = fmtNum(r['RECEITA TOTAL'].qtd) + ' linhas · sempre do mês atual';
   document.getElementById('r-renov').textContent = fmtBRL(r['RENOVAÇÃO'].receita);
   document.getElementById('r-renov-qtd').textContent = fmtNum(r['RENOVAÇÃO'].qtd) + ' linhas';
   document.getElementById('r-bl').textContent = fmtNum(r['BANDA LARGA'].qtd);
