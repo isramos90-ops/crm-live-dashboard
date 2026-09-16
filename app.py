@@ -372,7 +372,8 @@ def debug_pedidos():
 
     lines = crm.search_read(
         "sale.order.line", [["order_id.name", "in", nomes]],
-        fields=["product_id", "request_type_id", "price_total", "salesman_id", "order_id", "create_date"],
+        fields=["product_id", "request_type_id", "price_total", "price_subtotal", "price_unit",
+                "product_uom_qty", "salesman_id", "order_id", "create_date"],
         limit=0,
     )
     product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
@@ -383,10 +384,14 @@ def debug_pedidos():
 
     order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
     lead_stage_by_order = {}
+    order_totais = {}
     lookup_erro = None
     if order_ids:
         try:
-            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
+            orders = crm.execute_kw(
+                "sale.order", "read", [order_ids],
+                {"fields": ["id", "name", "opportunity_id", "amount_total", "amount_untaxed"]},
+            )
             lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
             lead_stage = {}
             if lead_ids:
@@ -395,6 +400,10 @@ def debug_pedidos():
             for o in orders:
                 opp = o.get("opportunity_id")
                 lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+                order_totais[o["id"]] = {
+                    "amount_total": o.get("amount_total"),
+                    "amount_untaxed": o.get("amount_untaxed"),
+                }
         except Exception as exc:  # noqa: BLE001
             lookup_erro = str(exc)
 
@@ -419,6 +428,9 @@ def debug_pedidos():
             "categoria_produto": categ_name,
             "tipo_solicitacao": req_name,
             "price_total": r.get("price_total"),
+            "price_subtotal": r.get("price_subtotal"),
+            "price_unit": r.get("price_unit"),
+            "product_uom_qty": r.get("product_uom_qty"),
             "vendedor": r["salesman_id"][1] if r.get("salesman_id") else None,
             "lead_stage": stage_name_lead,
             "lead_concluido_ou_em_tramite": bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
@@ -426,9 +438,21 @@ def debug_pedidos():
             "conta_como_receita": bool(categorias_ok) and bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
         })
 
+    totais_por_pedido = {}
+    for r in lines:
+        order = r.get("order_id")
+        if not order:
+            continue
+        name = order[1].strip().upper()
+        totais_por_pedido.setdefault(name, {"soma_linhas_price_total": 0.0, **order_totais.get(order[0], {})})
+        totais_por_pedido[name]["soma_linhas_price_total"] += r.get("price_total") or 0.0
+    for v in totais_por_pedido.values():
+        v["soma_linhas_price_total"] = round(v["soma_linhas_price_total"], 2)
+
     nao_encontrados = [n for n, achou in encontrados.items() if not achou]
     return jsonify({
         "linhas": out,
+        "totais_por_pedido": totais_por_pedido,
         "pedidos_nao_encontrados_como_sale_order_line": nao_encontrados,
         "erro_lookup_lead": lookup_erro,
     })
