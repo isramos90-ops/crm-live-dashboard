@@ -28,6 +28,7 @@ import odoo_client as crm
 import metas
 import fotos
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
+import hierarchy as hierarchy_mod
 from hierarchy import build_user_id_map
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -102,7 +103,12 @@ def add_lead_to_bucket(bucket, stage_name, flags):
 def hierarchy_buckets(pv_tree, uid_map, user_id):
     """Retorna [bucket_pv, bucket_supervisor, bucket_consultor] para o
     usuário do CRM informado, criando os nós que faltarem — ou None se o
-    usuário não está mapeado na hierarquia (fora do escopo do drill-down)."""
+    usuário não está mapeado na hierarquia (fora do escopo do drill-down).
+
+    Times com "conta_no_pv": False (ver hierarchy.EXCLUDED_FROM_PV_TOTAL —
+    hoje só a Equipe Elton, pedido da Isabela em 2026-09-16) continuam
+    aparecendo normalmente como equipe/consultor, mas o bucket do PV fica de
+    fora da lista, então o resultado deles nunca é somado ao total do PV."""
     info = uid_map.get(user_id) if user_id else None
     if not info:
         return None
@@ -112,6 +118,8 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
         sup_name, {"metrics": new_metric_bucket(), "consultores": {}, "equipe": info["equipe"]},
     )
     cons_bucket = sup_node["consultores"].setdefault(info["nome"], new_metric_bucket())
+    if not info.get("conta_no_pv", True):
+        return [sup_node["metrics"], cons_bucket]
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
 
 
@@ -273,7 +281,12 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
         for sup, sup_node in sorted(pv_node["supervisors"].items(), key=lambda x: -x[1]["metrics"]["convertido"]):
             round_bucket_revenue(sup_node["metrics"])
             sup_meta = metas.meta_for_equipe(sup_node.get("equipe"))
-            pv_metas.append(sup_meta)
+            # A Equipe Elton continua com seu próprio "meta" (plano), mas não
+            # entra na soma do plano do PV — mesma exclusão aplicada ao
+            # realizado em hierarchy_buckets() (pedido da Isabela em
+            # 2026-09-16).
+            if not hierarchy_mod.is_excluded_from_pv_total(sup_node.get("equipe")):
+                pv_metas.append(sup_meta)
             consultores = []
             for nome, metrics_bucket in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
                 round_bucket_revenue(metrics_bucket)

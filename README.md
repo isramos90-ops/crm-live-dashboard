@@ -272,6 +272,33 @@ divulgada, mas não coloque nada além dos próprios dados do CRM nelas):
   "equipe", sem foto de pessoa, usa as iniciais "EQ" como no restante do
   painel).
 
+## Alterações de 2026-09-16 (2ª rodada — exclusão da Equipe Elton e fotos especiais)
+
+- **Equipe Elton fora do resultado do PV** (pedido da Isabela): a "Equipe
+  Elton" (`PV 02 - Equipe Elton`) continua aparecendo normalmente no
+  `/explorar` como equipe selecionável, com seus próprios números — mas o
+  resultado dela (leads, produção, receita, movimentações e a meta/plano)
+  **não entra mais na soma do PV 02**. Antes de somar, é como se essa equipe
+  não existisse para efeito do total do PV; ela só aparece quando alguém
+  seleciona especificamente "EQUIPE ELTON" no filtro de Supervisor. Para
+  adicionar/remover outra equipe dessa mesma exclusão, edite o conjunto
+  `EXCLUDED_FROM_PV_TOTAL` em `hierarchy.py` (usa o nome completo da equipe,
+  ex: `"PV 02 - Equipe Elton"`).
+- **Fotos especiais para PV 02 e Equipe Carteira** (`/explorar`, pedido da
+  Isabela): como o nível "PV" e o nível "Equipe" não são pessoas, normalmente
+  aparecem sem foto (avatar "PV"/"EQ"). Duas exceções: a visão geral do
+  **PV 02** mostra a foto do **Flávio** (proprietário — arquivo
+  `static/fotos/flavio-dono-pv02.jpg`), e a visão geral da **Equipe
+  Carteira dentro do PV 02** mostra a foto da própria **Isabela**
+  (supervisora dessa equipe — arquivo `static/fotos/isabela-supervisora.jpg`).
+  Essas duas fotos usam nomes de arquivo próprios (não `flavio.jpg`/
+  `isabela.jpg`) de propósito, pra não colidir com o casamento automático por
+  primeiro nome do `fotos.py` — existe um consultor real chamado "Flavio
+  Manoel" (PV03) que precisa continuar aparecendo com as iniciais "FM", não
+  com a foto do dono. Essas fotos só aparecem no `/explorar`; o `/tv` nunca
+  mostra visão de PV nem de equipe (só consultor individual), então não é
+  afetado.
+
 ## Observações e próximos ajustes possíveis
 
 - "Assistente Plus" (uid 1) aparece com muitas movimentações — parece ser uma

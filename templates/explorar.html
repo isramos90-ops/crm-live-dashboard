@@ -173,6 +173,20 @@ function fotoFor(nome) {
   return path ? (STATIC_BASE + path) : null;
 }
 
+// Fotos "especiais" pra níveis que não são uma pessoa (PV e equipe), pedido
+// da Isabela em 2026-09-16: na visão geral do PV 02, mostrar a foto do
+// Flávio (proprietário); na visão geral da Equipe Carteira do PV 02, a foto
+// dela mesma (Isabela), já que ela é a supervisora dessa equipe. Usa
+// arquivos com nome próprio (não "flavio.jpg"/"isabela.jpg") pra não colidir
+// com o casamento por primeiro nome do fotoFor() — existem consultores reais
+// chamados Flavio (ex: "Flavio Manoel", PV03) que não podem herdar a foto do
+// dono por engano.
+function specialFoto(label, keyType, pv) {
+  if (keyType === 'pv' && label === 'PV 02') return STATIC_BASE + 'fotos/flavio-dono-pv02.jpg';
+  if (keyType === 'supervisor' && pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
+  return null;
+}
+
 let LAST_DATA = null;
 
 // Seleção atual do usuário — persiste entre atualizações automáticas dos
@@ -255,21 +269,25 @@ function render(pvNode, supNode) {
     node = pvNode;
     nivelLabel = pvNode.pv;
     subLabel = 'Visão geral do PV';
-    foto = null;
+    // PV 02: mostra a foto do Flávio (proprietário) — pedido da Isabela em
+    // 2026-09-16. Outros PVs continuam sem foto (avatar "PV").
+    foto = specialFoto(pvNode.pv, 'pv', pvNode.pv);
     peers = LAST_DATA.periods.month.hierarchy;
     peerNameKey = 'pv';
-    isPessoa = false;
+    isPessoa = !!foto;
   } else if (SEL_CONS === VALOR_TODOS) {
     // supNode.supervisor agora é o nome da EQUIPE (ex: "EQUIPE CARTEIRA"),
-    // não uma pessoa — pedido da Isabela em 2026-09-16 pra mostrar o
-    // resultado da equipe nesse nível, então sem foto/avatar de pessoa aqui.
+    // não uma pessoa — mostra o resultado da equipe nesse nível. Exceção
+    // (pedido da Isabela em 2026-09-16): a Equipe Carteira do PV 02, onde
+    // ela mesma é a supervisora, mostra a foto dela; as demais equipes
+    // continuam com o avatar "EQ".
     node = supNode;
     nivelLabel = supNode.supervisor;
     subLabel = 'PV: ' + pvNode.pv + ' · Visão geral da equipe';
-    foto = null;
+    foto = specialFoto(supNode.supervisor, 'supervisor', pvNode.pv);
     peers = pvNode.supervisors;
     peerNameKey = 'supervisor';
-    isPessoa = false;
+    isPessoa = !!foto;
   } else {
     const consNode = supNode.consultores.find(c => c.nome === SEL_CONS);
     if (!consNode) {
@@ -318,7 +336,7 @@ function render(pvNode, supNode) {
     .sort((a, b) => b.p - a.p)
     .slice(0, 3)
     .map((s, i) => {
-      const foto = fotoFor(s.nome);
+      const foto = specialFoto(s.nome, peerNameKey, pvNode.pv) || fotoFor(s.nome);
       const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
       return `<div class="ranking-card rank-${i+1}">
         <div class="ranking-photo">

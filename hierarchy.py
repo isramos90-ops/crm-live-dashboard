@@ -13,6 +13,12 @@ ALEXANDRE") — não o nome pessoal de quem supervisiona. Antes tentava achar
 o supervisor pelo membro do time cujo primeiro nome batesse com o sufixo da
 equipe, mas isso deixava times como "Equipe Carteira" (a própria Isabela é
 supervisora, mas não aparece como membro na planilha) sem rótulo.
+
+Exclusão do resultado do PV (2026-09-16, pedido da Isabela): a "Equipe
+Elton" (equipe "PV 02 - Equipe Elton") continua aparecendo normalmente como
+equipe/consultor no drill-down, com seus próprios números — mas o resultado
+dela NÃO entra na soma/plano do PV 02 (ver EXCLUDED_FROM_PV_TOTAL e
+`conta_no_pv` abaixo, usados em app.py).
 """
 import os
 import re
@@ -23,6 +29,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HIERARCHY_PATH = os.path.join(BASE_DIR, "config", "hierarquia_usuarios.xlsx")
 
 EXCLUDED_TEAMS = {"BKO", "GERENTE VIVO", "PV071-00001", "PV071-00002", "PV071-00003"}
+
+# Equipes que continuam aparecendo no drill-down (PV -> Supervisor ->
+# Consultor) com seus próprios números, mas cujo resultado NÃO deve ser
+# somado ao total/plano do PV (pedido da Isabela em 2026-09-16).
+EXCLUDED_FROM_PV_TOTAL = {"PV 02 - Equipe Elton"}
+
+
+def is_excluded_from_pv_total(equipe):
+    return equipe in EXCLUDED_FROM_PV_TOTAL
 
 
 def load_hierarchy_by_login():
@@ -55,6 +70,7 @@ def load_hierarchy_by_login():
             "equipe": equipe,
             "pv": pv,
             "supervisor": team_supervisor.get(equipe),
+            "conta_no_pv": not is_excluded_from_pv_total(equipe),
         }
     return result
 
