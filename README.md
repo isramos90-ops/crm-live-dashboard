@@ -157,9 +157,16 @@ específico — a contagem desses casos aparece como nota ao lado dos filtros.
 - `config/hierarquia_usuarios.xlsx` (export res.users: Login, Nome, Equipes de vendas):
   usado para montar o filtro PV → Supervisor → Consultor (ver `hierarchy.py`). Regras:
   - PV = parte antes do "-" no nome da equipe (ex: "PV 02 - Equipe Alexandre" → "PV 02").
-  - Supervisor = o membro do time cujo primeiro nome bate com o sufixo da equipe (ex:
-    "Alexandre Ornellas" é o supervisor de "PV 02 - Equipe Alexandre"). Quando o sufixo
-    não bate com ninguém (ex: "Equipe Carteira"), o time fica sem supervisor identificado.
+  - **Atualizado em 2026-09-16 (pedido da Isabela)**: o nível "Supervisor" do
+    drill-down mostra o **resultado da equipe**, rotulado como "EQUIPE
+    <NOME>" (ex: "EQUIPE CARTEIRA", "EQUIPE RICHARD", "EQUIPE ALEXANDRE"),
+    em vez do nome pessoal de quem supervisiona. Antes o sistema tentava
+    achar, entre os membros do time, alguém cujo primeiro nome batesse com o
+    sufixo da equipe — isso deixava times como "Equipe Carteira" (a própria
+    Isabela é a supervisora, mas não aparece como membro na planilha) sem
+    supervisor identificado ("sem supervisor"). Agora o rótulo é sempre
+    derivado do nome da equipe, então todo time tem um rótulo consistente
+    nesse nível.
   - Equipes fora do padrão "PV - Equipe <Nome>" (BKO, GERENTE VIVO, PV071-00001/2/3) são
     **excluídas** deste filtro — aparecem apenas no "Ranking por equipe" normal, e a
     contagem de leads fora do escopo é mostrada como nota ao lado dos filtros.
@@ -248,6 +255,22 @@ divulgada, mas não coloque nada além dos próprios dados do CRM nelas):
 - **`/api/debug_pedidos?nomes=S12345,S67890`**: mesma coisa, mas só pra uma
   lista específica de números de pedido — útil pra investigar um caso
   pontual sem baixar tudo.
+
+## Alterações de 2026-09-16 (texto e ranking)
+
+- **"Meta" → "Plano Comercial"**: por questões internas da Isabela, todo texto
+  visível no `/tv` e no `/explorar` que dizia "Meta"/"Metas" agora diz "Plano
+  Comercial" (ex: "Plano Comercial x Realizado", "Plano Comercial por
+  produto", "Sem plano" quando não há meta cadastrada). Isso é só o texto
+  exibido — nomes internos de variáveis/CSS e o arquivo `config/metas.xlsx`
+  continuam com "meta" no nome, sem impacto para quem só usa o painel.
+- **Ranking Top 3 redesenhado**: o widget de ranking (1º/2º/3º colocado por %
+  de plano batido) agora mostra a **foto do consultor maior**, com uma borda
+  circular colorida (ouro/prata/bronze) e uma medalha 🥇🥈🥉 sobre a foto,
+  em vez da lista antiga com números simples e fotos pequenas — presente
+  tanto no `/tv` quanto no `/explorar`, em qualquer nível do filtro (no nível
+  "equipe", sem foto de pessoa, usa as iniciais "EQ" como no restante do
+  painel).
 
 ## Observações e próximos ajustes possíveis
 

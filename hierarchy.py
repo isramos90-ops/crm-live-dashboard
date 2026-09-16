@@ -4,12 +4,15 @@ config/hierarquia_usuarios.xlsx (export res.users: Login, Nome, Equipes de venda
 
 Regras confirmadas com a Isabela (2026-09-15):
 - PV = parte antes do "-" no nome da equipe (ex: "PV 02 - Equipe Alexandre" -> "PV 02").
-- Supervisor = o membro do time cujo primeiro nome bate com o sufixo da equipe
-  (ex: "Alexandre Ornellas" é membro de "PV 02 - Equipe Alexandre" -> supervisor).
-  Times cujo sufixo não bate com nenhum nome de membro (ex: "Equipe Carteira")
-  ficam sem supervisor identificado.
 - Equipes que não seguem o padrão "PV - Equipe <Nome>" (BKO, GERENTE VIVO,
   PV071-00001/2/3) são excluídas do drill-down PV/Supervisor/Consultor.
+
+Rótulo do nível "Supervisor" (2026-09-16): mostra o RESULTADO DA EQUIPE, com
+o nome da equipe (ex: "EQUIPE CARTEIRA", "EQUIPE RICHARD", "EQUIPE
+ALEXANDRE") — não o nome pessoal de quem supervisiona. Antes tentava achar
+o supervisor pelo membro do time cujo primeiro nome batesse com o sufixo da
+equipe, mas isso deixava times como "Equipe Carteira" (a própria Isabela é
+supervisora, mas não aparece como membro na planilha) sem rótulo.
 """
 import os
 import re
@@ -22,29 +25,26 @@ HIERARCHY_PATH = os.path.join(BASE_DIR, "config", "hierarquia_usuarios.xlsx")
 EXCLUDED_TEAMS = {"BKO", "GERENTE VIVO", "PV071-00001", "PV071-00002", "PV071-00003"}
 
 
-def _first_name(full_name):
-    return full_name.strip().split()[0].upper() if full_name else ""
-
-
 def load_hierarchy_by_login():
     """Retorna {login: {"nome":..., "equipe":..., "pv":..., "supervisor": nome ou None}}"""
     df = pd.read_excel(HIERARCHY_PATH)
     df = df[df["Equipes de vendas"].notna()]
     df = df[~df["Equipes de vendas"].isin(EXCLUDED_TEAMS)]
 
-    # descobre o supervisor de cada equipe (membro cujo primeiro nome bate com o sufixo)
+    # Rótulo do 2º nível do drill-down (PV -> "Supervisor" -> Consultor): a
+    # Isabela pediu em 2026-09-16 pra mostrar o RESULTADO DA EQUIPE nesse
+    # nível, com o nome da equipe (ex: "EQUIPE CARTEIRA", "EQUIPE RICHARD",
+    # "EQUIPE ALEXANDRE") em vez do nome pessoal do supervisor — inclusive
+    # pra equipes como "Equipe Carteira", onde ninguém do time bate com o
+    # sufixo do nome da equipe (ela mesma é a supervisora, mas não aparece
+    # como membro da planilha) e antes ficava "(sem supervisor)".
     team_supervisor = {}
-    for equipe, group in df.groupby("Equipes de vendas"):
+    for equipe in df["Equipes de vendas"].unique():
         if " - " not in equipe:
             continue
         suffix = equipe.split(" - ", 1)[1]
         suffix = re.sub(r"^Equipe\s+", "", suffix, flags=re.IGNORECASE).strip().upper()
-        supervisor = None
-        for _, row in group.iterrows():
-            if _first_name(row["Nome"]) == suffix:
-                supervisor = row["Nome"]
-                break
-        team_supervisor[equipe] = supervisor
+        team_supervisor[equipe] = "EQUIPE " + suffix
 
     result = {}
     for _, row in df.iterrows():

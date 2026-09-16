@@ -79,13 +79,23 @@
   .funil-box.finalizado { background: var(--brand-magenta); }
   .funil-note { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
 
-  .ranking-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gridline); }
-  .ranking-item:last-child { border-bottom: none; }
-  .ranking-item .medal { width: 30px; height: 30px; border-radius: 50%; background: #f2e3fa; color: var(--brand-purple); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
-  .ranking-item .info { flex: 1; }
-  .ranking-item .nome { font-size: 13px; font-weight: 600; }
-  .ranking-item .tag { font-size: 11px; color: var(--text-muted); }
-  .ranking-item .pct { font-weight: 700; color: var(--brand-purple); }
+  .ranking-podium { display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; padding: 4px 0; gap: 10px; }
+  .ranking-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .ranking-photo { position: relative; }
+  .ranking-photo .circle {
+    border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff; background: var(--brand-purple);
+  }
+  .ranking-photo .circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ranking-photo .medal-badge {
+    position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+  }
+  .rank-1 .circle { width: 92px; height: 92px; font-size: 30px; border: 4px solid #FFD700; }
+  .rank-2 .circle { width: 76px; height: 76px; font-size: 24px; border: 4px solid #C0C0C0; }
+  .rank-3 .circle { width: 68px; height: 68px; font-size: 22px; border: 4px solid #CD7F32; }
+  .ranking-card .nome { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .ranking-card .pct { font-size: 17px; font-weight: 800; color: var(--brand-purple); }
 
   footer { padding: 10px 24px 18px; text-align: center; font-size: 11px; color: var(--text-muted); }
   .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
@@ -146,7 +156,8 @@ function fmtTime(iso) {
 }
 function pct(realizado, meta) { return meta > 0 ? (100 * realizado / meta) : null; }
 function pctClass(p) { return p === null ? '' : (p >= 85 ? 'good' : (p >= 60 ? 'warn' : 'bad')); }
-function pctLabel(p) { return p === null ? 'Sem meta' : p.toFixed(0) + '%'; }
+function pctLabel(p) { return p === null ? 'Sem plano' : p.toFixed(0) + '%'; }
+const MEDALS = ['🥇', '🥈', '🥉'];
 function clampPct(p) { return p === null ? 0 : Math.max(0, Math.min(100, p)); }
 function ratio(n, d) { return d > 0 ? (100 * n / d) : 0; }
 function initials(nome) {
@@ -249,13 +260,16 @@ function render(pvNode, supNode) {
     peerNameKey = 'pv';
     isPessoa = false;
   } else if (SEL_CONS === VALOR_TODOS) {
+    // supNode.supervisor agora é o nome da EQUIPE (ex: "EQUIPE CARTEIRA"),
+    // não uma pessoa — pedido da Isabela em 2026-09-16 pra mostrar o
+    // resultado da equipe nesse nível, então sem foto/avatar de pessoa aqui.
     node = supNode;
     nivelLabel = supNode.supervisor;
-    subLabel = 'PV: ' + pvNode.pv + ' · Visão geral do supervisor';
-    foto = fotoFor(supNode.supervisor);
+    subLabel = 'PV: ' + pvNode.pv + ' · Visão geral da equipe';
+    foto = null;
     peers = pvNode.supervisors;
     peerNameKey = 'supervisor';
-    isPessoa = true;
+    isPessoa = false;
   } else {
     const consNode = supNode.consultores.find(c => c.nome === SEL_CONS);
     if (!consNode) {
@@ -264,7 +278,7 @@ function render(pvNode, supNode) {
     }
     node = consNode;
     nivelLabel = consNode.nome;
-    subLabel = 'PV: ' + pvNode.pv + ' · Supervisor: ' + supNode.supervisor;
+    subLabel = 'PV: ' + pvNode.pv + ' · ' + supNode.supervisor;
     foto = fotoFor(consNode.nome);
     peers = supNode.consultores;
     peerNameKey = 'nome';
@@ -281,7 +295,7 @@ function render(pvNode, supNode) {
     avatarEl.textContent = initials(nivelLabel).toUpperCase();
   } else {
     avatarEl.innerHTML = '';
-    avatarEl.textContent = 'PV';
+    avatarEl.textContent = (SEL_SUP === VALOR_TODOS || !supNode) ? 'PV' : 'EQ';
   }
 
   const realizadoTotal = node.revenue['RECEITA TOTAL'].receita;
@@ -303,29 +317,36 @@ function render(pvNode, supNode) {
     .filter(p => p.p !== null)
     .sort((a, b) => b.p - a.p)
     .slice(0, 3)
-    .map((s, i) => `<div class="ranking-item">
-      <div class="medal">${i+1}º</div>
-      <div class="info"><div class="nome">${s.nome}</div><div class="tag">Meta x Realizado</div></div>
-      <div class="pct">${pctLabel(s.p)}</div>
-    </div>`).join('') || '<div class="funil-note">Ninguém com meta cadastrada ainda.</div>';
+    .map((s, i) => {
+      const foto = fotoFor(s.nome);
+      const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
+      return `<div class="ranking-card rank-${i+1}">
+        <div class="ranking-photo">
+          <div class="circle">${fotoHtml}</div>
+          <div class="medal-badge">${MEDALS[i]}</div>
+        </div>
+        <div class="nome">${s.nome}</div>
+        <div class="pct">${pctLabel(s.p)}</div>
+      </div>`;
+    }).join('') || '<div class="funil-note">Ninguém com plano comercial cadastrado ainda.</div>';
 
   const coberturaPct = ratio(node.aceite_enviado, node.total);
 
   document.getElementById('main').innerHTML = `
     <div class="card meta-principal">
       <span class="tag">★ Indicador principal</span>
-      <h2>Meta x Realizado (Receita Total)</h2>
+      <h2>Plano Comercial x Realizado (Receita Total)</h2>
       <div class="pct ${pctClass(pTotal)}">${pctLabel(pTotal)}</div>
       ${meterHtml(pTotal)}
       <div class="meta-rows">
-        <div>Meta<b>${metaTotal > 0 ? fmtBRL(metaTotal) : '—'}</b></div>
+        <div>Plano Comercial<b>${metaTotal > 0 ? fmtBRL(metaTotal) : '—'}</b></div>
         <div>Realizado<b>${fmtBRL(realizadoTotal)}</b></div>
         <div>Falta bater<b class="falta">${metaTotal > 0 ? fmtBRL(falta) : '—'}</b></div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Metas por produto</h2>
+      <h2>Plano Comercial por produto</h2>
       <div class="produto-grid">
         ${produtos.map(p => {
           const pp = pct(p.realizado, p.meta);
@@ -333,7 +354,7 @@ function render(pvNode, supNode) {
             <div class="nome">${p.nome}</div>
             <div class="pct ${pctClass(pp)}">${pctLabel(pp)}</div>
             ${meterHtml(pp)}
-            <div class="nums">${p.money ? fmtBRL(p.meta) : fmtNum(p.meta)} meta · ${p.money ? fmtBRL(p.realizado) : fmtNum(p.realizado)} real.</div>
+            <div class="nums">${p.money ? fmtBRL(p.meta) : fmtNum(p.meta)} plano · ${p.money ? fmtBRL(p.realizado) : fmtNum(p.realizado)} real.</div>
           </div>`;
         }).join('')}
       </div>
@@ -348,8 +369,8 @@ function render(pvNode, supNode) {
     </div>
 
     <div class="card" style="grid-row: span 2;">
-      <h2>Meta x Realizado — Top 3</h2>
-      ${rankingHtml}
+      <h2>Plano Comercial x Realizado — Top 3</h2>
+      <div class="ranking-podium">${rankingHtml}</div>
     </div>
 
     <div class="card" style="grid-column: span 2;">
