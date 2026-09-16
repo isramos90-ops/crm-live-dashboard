@@ -5,6 +5,94 @@ usando a metodologia oficial de classificação definida pela Isabela (etapas �
 atendido/convertido/concluído/em trâmite, e produto+solicitação → categorias de
 receita). Atualiza os dados a cada 1 hora por padrão.
 
+## Modo TV (`/tv`)
+
+Além do painel principal (`/`), existe uma tela separada em **`/tv`**, pensada para
+ficar rodando sozinha numa TV/monitor: mostra **um consultor por vez**, com
+Meta x Realizado (indicador principal, receita total), metas por produto
+(Renovação, Aparelhos, Banda Larga), % do mailing/leads do mês já atendidos,
+funil de vendas (Proposta enviada / Aceite enviado / Proposta recusada /
+Finalizado) e um ranking dos 3 consultores com maior % de meta batida — e
+avança automaticamente para o próximo consultor a cada 12s (configurável via
+`TV_SLIDE_SECONDS`). Não inclui Ligações nem WhatsApp (sem esses dados no CRM).
+Desde 2026-09-16, o modo TV mostra **só os consultores/supervisores do PV
+02** (pedido da Isabela) — pra mudar o PV ou tirar o filtro, é só editar a
+constante `TV_PV_FILTRO` no início do `<script>` de `templates/tv.html`
+(o painel principal `/` continua mostrando todos os PVs normalmente).
+
+## Consulta interativa (`/explorar`)
+
+Desde 2026-09-16, além do `/tv` (rotação automática, só PV 02), existe
+**`/explorar`**: a mesma lógica e o mesmo cartão do modo TV (Meta x Realizado,
+metas por produto, atendimentos, funil, ranking Top 3 e foto), mas com
+**seleção manual em cascata** — três combos no topo da página: **PV →
+Supervisor → Consultor**. Não avança sozinho de tela em tela; quem está
+olhando escolhe o que quer ver, mas os números continuam se atualizando
+sozinhos (mesmo `/api/data`, mesmo intervalo de `REFRESH_SECONDS`).
+
+- Ao escolher só o PV, mostra a **visão geral do PV** (soma de todas as
+  equipes/consultores daquele PV) — ranking Top 3 nesse caso é entre os PVs.
+- Ao escolher PV + Supervisor (sem consultor), mostra a **visão geral daquele
+  supervisor/equipe** — ranking Top 3 entre os supervisores do mesmo PV.
+- Ao escolher PV + Supervisor + Consultor, mostra o consultor individual,
+  igual ao modo TV — ranking Top 3 entre os consultores da mesma equipe.
+- Mostra todos os PVs (não tem o filtro `TV_PV_FILTRO` do `/tv`).
+- Foto: mesma lógica do `/tv` (casa pelo primeiro nome via `fotos.py`); no
+  nível "visão geral do PV" não tem foto (não é uma pessoa), só o rótulo "PV".
+
+As metas vêm de **`config/metas.xlsx`** (abas `EQUIPES` e `USUARIOS`, com as
+colunas `RECEITA_TOTAL`, `QUANTIDADE_BL`, `RECEITA_RENOVACAO`,
+`RECEITA_APARELHOS`), pré-preenchido com os valores que a Isabela mandou por
+print em 2026-09-15. A meta de cada equipe é a meta do supervisor daquela
+equipe; a meta de cada PV é a soma das metas das equipes/supervisores daquele
+PV. Um consultor sem linha em `USUARIOS` aparece como "Sem meta" em vez de
+0%. Para atualizar as metas, é só editar esse Excel (mesmo nome/abas/colunas)
+e reiniciar o serviço.
+
+**Resolvido em 2026-09-16**: o 4º produto do esboço ("Móvel") não é uma
+categoria de receita nova — é a própria **Receita Total** (a Isabela já
+passa ali todo o valor considerado). "Metas por produto" no modo TV agora
+mostra 4 caixinhas: Receita Total, Renovação, Aparelhos e Banda Larga (grid
+2x2).
+
+**Pendências conhecidas** (avisar a Isabela): o funil de vendas mostra
+apenas contagem de CNPJs/leads por etapa, sem os valores em R$ mostrados no
+esboço (o esboço tinha "R$ 1,85M" etc. por etapa — dá pra adicionar usando
+`expected_revenue` do lead, mas ainda não foi confirmado se é esse o campo
+certo, nem se é valor esperado ou já vendido); o "velocímetro" do esboço foi
+simplificado para uma barra horizontal com as mesmas 3 faixas de cor
+(vermelho/amarelo/verde), em vez do arco/ponteiro literal.
+
+O tempo de troca de slide no modo TV é de **no mínimo 1 minuto** (confirmado
+com a Isabela em 2026-09-15) — `TV_SLIDE_SECONDS` pode aumentar esse valor,
+mas o código nunca deixa cair abaixo de 60s.
+
+## Receita sempre do mês atual + pedidos "puxados" para o mês atual
+
+A partir de 2026-09-15 (pedido da Isabela): **a receita (tiles do topo, metas
+e o Meta x Realizado do modo TV) é sempre calculada com o período "Mês
+atual"**, mesmo que o filtro de Período no topo do painel principal esteja em
+"Últimos 60 dias" — esse seletor continua afetando leads, atendimento,
+funil, produção e movimentações, só não afeta mais a receita.
+
+Além disso, alguns pedidos (`sale.order`, identificados pelo número/cotação,
+ex: `S41934`) foram criados/fechados no mês anterior mas **têm que contar
+como receita do mês atual mesmo assim** (pedido da Isabela em 2026-09-15 —
+antes a v6 tinha feito o oposto, excluído esses pedidos, o que estava
+errado). A Isabela manda a lista desses números e eles entram na receita do
+mês atual mesmo com a `create_date` da linha sendo de antes do início do
+mês. Essa lista fica em **`config/pedidos_mes_atual.txt`** (um código por
+linha, sem aspas). Para incluir mais pedidos: adicionar o(s) número(s)
+nesse arquivo (uma linha por código) e reiniciar o serviço. O painel mostra
+quantos pedidos foram incluídos assim como nota ao lado do filtro
+PV/Supervisor/Consultor. Essa lista só afeta o período "Mês atual" (não o
+"Últimos 60 dias").
+
+Nota: 3 dos números da lista (`40541577`, `49980193`, `49984693`) não têm o
+formato do número de pedido do CRM (que começa com "S", ex: `S41934`) — a
+Isabela confirmou que é pra desconsiderar (não fazem mal, só não vão casar
+com nenhum pedido).
+
 ## O que o painel mostra
 
 - **Filtro de período**: Mês atual (coorte por data de criação) ou Últimos 60 dias
@@ -42,6 +130,30 @@ específico — a contagem desses casos aparece como nota ao lado dos filtros.
   numa categoria se os dois critérios baterem (E lógico)**, confirmado com a Isabela.
   A receita é atribuída ao PV/Supervisor/Consultor pelo campo `salesman_id` da linha
   de pedido (vendedor da linha).
+  **Importante (confirmado com a Isabela em 2026-09-16): as 4 categorias são
+  independentes, RECEITA TOTAL não é a soma das outras 3** — em particular,
+  solicitações do tipo RENOVAÇÃO/MIGRAÇÃO/MIGRAÇÃO UP/MIGRAÇÃO DOWN e as
+  categorias de produto de Aparelho **propositalmente não contam** como
+  RECEITA TOTAL (só contam nas suas categorias específicas). Por isso é
+  normal um consultor ter, por exemplo, mais Renovação do que Receita Total —
+  não é bug.
+  **Além disso (confirmado com a Isabela em 2026-09-16): só conta como
+  receita um pedido cujo lead/oportunidade de origem esteja atualmente na
+  etapa CONCLUIDO ou EM TRAMITE** (mesmas flags de `config/etapas_estagio.xlsx`
+  usadas em Produção). Um pedido cujo lead esteja em qualquer outra etapa
+  (ex: Proposta enviada, Aceite enviado, etc.) ou sem lead vinculado **não
+  entra em nenhuma categoria de receita**. Essa ligação é feita via
+  `sale.order.line → order_id (sale.order) → opportunity_id (crm.lead) →
+  stage_id`. Se o campo `opportunity_id` não existir nesse CRM (customização
+  específica), o log do serviço registra o erro e a receita fica zerada
+  naquele ciclo até ajustar o nome do campo em `app.py`.
+  **Correção em 2026-09-16**: os tipos de solicitação aceitos para BANDA
+  LARGA estavam errados — a lista correta (confirmada pela Isabela) é
+  **ALTA, PORTABILIDADE, PORTABILIDADE PF, MIGRACAO DE TECNOLOGIA**
+  (substituindo NOVO/PORTADO/PORTADO PF/MIGRAÇÃO DE TECNOLOGIA, que eram os
+  nomes usados nas outras categorias, não os da Banda Larga). O critério de
+  produto (`All / Fixa Básica - Dados` / `All / Fixa Básica PF - Dados`)
+  não mudou.
 - `config/hierarquia_usuarios.xlsx` (export res.users: Login, Nome, Equipes de vendas):
   usado para montar o filtro PV → Supervisor → Consultor (ver `hierarchy.py`). Regras:
   - PV = parte antes do "-" no nome da equipe (ex: "PV 02 - Equipe Alexandre" → "PV 02").
@@ -121,6 +233,21 @@ python3 app.py
    - `LAST_N_DAYS` = `60` (opcional — período alternativo do seletor; padrão já é 60)
 4. O Railway detecta o `Procfile` e usa `gunicorn` automaticamente.
 5. Abra a URL gerada — é essa URL que fica aberta na TV/monitor.
+
+## Auditoria detalhada (linha a linha)
+
+Duas rotas de diagnóstico, sem autenticação (a URL do Railway não é
+divulgada, mas não coloque nada além dos próprios dados do CRM nelas):
+
+- **`/api/export_linhas_mes`**: todas as linhas de pedido do mês atual
+  (mesmo critério usado no cálculo de receita), uma por produto vendido, com
+  cliente, número do pedido, PV/Supervisor/Consultor, categoria de produto,
+  tipo de solicitação, valor, etapa do lead vinculado e se conta como
+  receita. É a fonte da aba "Por Consultor - Detalhado" do Excel que a
+  Isabela pede pra auditar os resultados.
+- **`/api/debug_pedidos?nomes=S12345,S67890`**: mesma coisa, mas só pra uma
+  lista específica de números de pedido — útil pra investigar um caso
+  pontual sem baixar tudo.
 
 ## Observações e próximos ajustes possíveis
 

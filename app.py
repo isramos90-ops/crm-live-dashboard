@@ -351,6 +351,20 @@ def tv():
     )
 
 
+@app.route("/explorar")
+def explorar():
+    """Versão do modo TV com seleção manual em cascata (PV → Supervisor →
+    Consultor) em vez de rotação automática — mesma lógica de metas/receita
+    e mesmas fotos, mas cada nível pode ser visto individualmente ou em
+    'visão geral' (agregado). Os dados continuam se atualizando sozinhos
+    (mesma origem /api/data), só a seleção fica nas mãos de quem está
+    olhando (pedido da Isabela em 2026-09-16)."""
+    return render_template(
+        "explorar.html", refresh_seconds=REFRESH_SECONDS,
+        fotos_map=fotos.FOTOS_MAP,
+    )
+
+
 @app.route("/api/data")
 def api_data():
     with _state_lock:
