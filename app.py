@@ -22,7 +22,7 @@ import os
 import threading
 import time
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 import odoo_client as crm
 import metas
@@ -355,6 +355,83 @@ def tv():
 def api_data():
     with _state_lock:
         return jsonify(_state)
+
+
+@app.route("/api/debug_pedidos")
+def debug_pedidos():
+    """Diagnóstico manual: mostra, pra uma lista de números de pedido
+    (Número da Cotação, ex: S42104), exatamente como cada linha foi
+    classificada — categoria de produto, tipo de solicitação, valor, etapa
+    do lead vinculado e em quais categorias de receita a linha entrou (ou
+    por que não entrou em nenhuma). Uso: /api/debug_pedidos?nomes=S42104,S41771
+    """
+    nomes_param = request.args.get("nomes", "")
+    nomes = [n.strip().upper() for n in nomes_param.split(",") if n.strip()]
+    if not nomes:
+        return jsonify({"erro": "passe ?nomes=S12345,S67890"}), 400
+
+    lines = crm.search_read(
+        "sale.order.line", [["order_id.name", "in", nomes]],
+        fields=["product_id", "request_type_id", "price_total", "salesman_id", "order_id", "create_date"],
+        limit=0,
+    )
+    product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
+    prod_categ = {}
+    if product_ids:
+        prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
+        prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
+
+    order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
+    lead_stage_by_order = {}
+    lookup_erro = None
+    if order_ids:
+        try:
+            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
+            lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
+            lead_stage = {}
+            if lead_ids:
+                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
+                lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+            for o in orders:
+                opp = o.get("opportunity_id")
+                lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+        except Exception as exc:  # noqa: BLE001
+            lookup_erro = str(exc)
+
+    out = []
+    encontrados = {n: False for n in nomes}
+    for r in lines:
+        order = r.get("order_id")
+        order_name = order[1].strip().upper() if order else None
+        if order_name in encontrados:
+            encontrados[order_name] = True
+        order_id_num = order[0] if order else None
+        stage_name_lead = lead_stage_by_order.get(order_id_num)
+        flags_lead = classify_stage(stage_name_lead)
+        req_name = r["request_type_id"][1] if r.get("request_type_id") else None
+        prod_id = r["product_id"][0] if r.get("product_id") else None
+        categ_name = prod_categ.get(prod_id)
+        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat)]
+        out.append({
+            "pedido": order_name,
+            "create_date": r.get("create_date"),
+            "produto": r["product_id"][1] if r.get("product_id") else None,
+            "categoria_produto": categ_name,
+            "tipo_solicitacao": req_name,
+            "price_total": r.get("price_total"),
+            "vendedor": r["salesman_id"][1] if r.get("salesman_id") else None,
+            "lead_stage": stage_name_lead,
+            "lead_concluido_ou_em_tramite": bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+            "categorias_de_receita_que_bateram": categorias_ok,
+            "conta_como_receita": bool(categorias_ok) and bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+        })
+
+    nao_encontrados = [n for n, achou in encontrados.items() if not achou]
+    return jsonify({
+        "linhas": out,
+        "pedidos_nao_encontrados_como_sale_order_line": nao_encontrados,
+        "erro_lookup_lead": lookup_erro,
+    })
 
 
 def start_background_refresh():
