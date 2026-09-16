@@ -43,7 +43,7 @@
   .meta-rows b { display: block; font-size: 14px; color: var(--text-primary); }
   .falta { color: var(--bad); }
 
-  .produto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .produto-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
   .produto-tile { text-align: center; }
   .produto-tile .nome { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
   .produto-tile .pct { font-size: 22px; font-weight: 700; }
@@ -153,10 +153,15 @@ async function fetchData() {
   }
 }
 
+// Modo TV mostra só o PV 02 (pedido da Isabela em 2026-09-16) — pra trocar o
+// PV exibido (ou remover o filtro), edite essa constante.
+const TV_PV_FILTRO = "PV 02";
+
 function rebuildSlides() {
   const period = LAST_DATA.periods.month;
   const slides = [];
   for (const pv of period.hierarchy) {
+    if (TV_PV_FILTRO && pv.pv !== TV_PV_FILTRO) continue;
     for (const sup of pv.supervisors) {
       for (const c of sup.consultores) {
         slides.push({ ...c, pv: pv.pv, supervisor: sup.supervisor });
@@ -196,6 +201,7 @@ function renderSlide() {
   const falta = Math.max(0, metaTotal - realizadoTotal);
 
   const produtos = [
+    { nome: 'Receita Total', realizado: realizadoTotal, meta: metaTotal, money: true },
     { nome: 'Renovação', realizado: c.revenue['RENOVAÇÃO'].receita, meta: c.meta.RECEITA_RENOVACAO, money: true },
     { nome: 'Aparelhos', realizado: c.revenue['APARELHO'].receita, meta: c.meta.RECEITA_APARELHOS, money: true },
     { nome: 'Banda Larga', realizado: c.revenue['BANDA LARGA'].qtd, meta: c.meta.QUANTIDADE_BL, money: false },
