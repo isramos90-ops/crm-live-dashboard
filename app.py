@@ -26,6 +26,7 @@ from flask import Flask, jsonify, render_template
 
 import odoo_client as crm
 import metas
+import fotos
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
 from hierarchy import build_user_id_map
 
@@ -42,6 +43,30 @@ SYSTEM_USER_IDS = {int(x) for x in os.environ.get("SYSTEM_USER_IDS", "1").split(
 STAGE_TRACKING_FIELD_ID = int(os.environ.get("STAGE_TRACKING_FIELD_ID", "6197"))
 
 LAST_N_DAYS = int(os.environ.get("LAST_N_DAYS", "60"))
+
+# Tempo mínimo de cada slide no modo TV: pelo menos 1 minuto (confirmado com
+# a Isabela em 2026-09-15). TV_SLIDE_SECONDS pode aumentar esse valor, mas
+# nunca reduzir abaixo de 60s.
+TV_SLIDE_SECONDS = max(60, int(os.environ.get("TV_SLIDE_SECONDS", "60")))
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_pedidos_mes_atual():
+    """Números de pedido/cotação (sale.order 'name', ex: S41934) que a
+    Isabela quer contar DENTRO da receita do mês atual mesmo que a
+    'create_date' da linha seja de um mês anterior (pedido criado no mês
+    passado mas que só fechou/andou agora) — ver config/pedidos_mes_atual.txt
+    e README. Um código por linha."""
+    path = os.path.join(BASE_DIR, "config", "pedidos_mes_atual.txt")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return {line.strip().upper() for line in f if line.strip()}
+    except FileNotFoundError:
+        return set()
+
+
+PEDIDOS_MES_ATUAL = _load_pedidos_mes_atual()
 
 _state_lock = threading.Lock()
 _state = {"data": None, "updated_at": None, "error": None}
@@ -90,8 +115,9 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
 
 
-def compute_period_metrics(start_dt, label, uid_map):
+def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
     start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    force_include_orders = force_include_orders or set()
 
     root = new_metric_bucket()
     pv_tree = {}
@@ -135,9 +161,17 @@ def compute_period_metrics(start_dt, label, uid_map):
     )[:20]
 
     # ---------- Receita do período (linhas de pedido) ----------
+    # Domínio: linhas criadas dentro do período OU pertencentes a um pedido
+    # da lista "force_include_orders" (pedidos de um mês anterior que a
+    # Isabela quer contar neste período mesmo assim — ver
+    # config/pedidos_mes_atual.txt e README). Um único search evita duplicar
+    # linhas que já caem nas duas condições.
+    lines_domain = [["create_date", ">=", start_str]]
+    if force_include_orders:
+        lines_domain = ["|", ["create_date", ">=", start_str], ["order_id.name", "in", sorted(force_include_orders)]]
     lines = crm.search_read(
-        "sale.order.line", [["create_date", ">=", start_str]],
-        fields=["product_id", "request_type_id", "price_total", "salesman_id"], limit=0,
+        "sale.order.line", lines_domain,
+        fields=["product_id", "request_type_id", "price_total", "salesman_id", "order_id"], limit=0,
     )
     product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
     prod_categ = {}
@@ -145,7 +179,12 @@ def compute_period_metrics(start_dt, label, uid_map):
         prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
         prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
 
+    pedidos_mes_atual_count = 0
     for r in lines:
+        order = r.get("order_id")
+        order_name = order[1].strip().upper() if order else None
+        if order_name and order_name in force_include_orders:
+            pedidos_mes_atual_count += 1
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
         categ_name = prod_categ.get(prod_id)
@@ -224,6 +263,7 @@ def compute_period_metrics(start_dt, label, uid_map):
         "top_consultores": top_consultores,
         "hierarchy": hierarchy,
         "leads_fora_do_escopo": leads_fora_do_escopo,
+        "pedidos_mes_atual_count": pedidos_mes_atual_count,
     }
 
 
@@ -234,7 +274,10 @@ def collect_data():
 
     uid_map = build_user_id_map(crm.search_read)
 
-    month = compute_period_metrics(month_start, now.strftime("%m/%Y"), uid_map)
+    # PEDIDOS_MES_ATUAL só se aplica ao período "mês atual" — são pedidos de
+    # um mês anterior que a Isabela quer contar como receita deste mês
+    # mesmo assim (ver config/pedidos_mes_atual.txt).
+    month = compute_period_metrics(month_start, now.strftime("%m/%Y"), uid_map, force_include_orders=PEDIDOS_MES_ATUAL)
     last_n_label = "Últimos {}d ({} a {})".format(
         LAST_N_DAYS, last_n_start.strftime("%d/%m"), now.strftime("%d/%m"),
     )
@@ -273,7 +316,8 @@ def index():
 def tv():
     return render_template(
         "tv.html", refresh_seconds=REFRESH_SECONDS,
-        slide_seconds=int(os.environ.get("TV_SLIDE_SECONDS", "12")),
+        slide_seconds=TV_SLIDE_SECONDS,
+        fotos_map=fotos.FOTOS_MAP,
     )
 
 
