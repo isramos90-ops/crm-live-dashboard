@@ -179,9 +179,39 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
         prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
         prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
 
+    # ---------- Só conta receita de pedido cujo lead/oportunidade de origem
+    # esteja em CONCLUIDO ou EM TRAMITE (confirmado com a Isabela em
+    # 2026-09-16) ----------
+    # sale.order.line -> sale.order (order_id) -> crm.lead (opportunity_id) -> stage_id.
+    # Pedido sem lead vinculado, ou cujo lead esteja em outra etapa, não conta
+    # como receita.
+    order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
+    lead_stage_by_order = {}
+    if order_ids:
+        try:
+            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
+            lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
+            lead_stage = {}
+            if lead_ids:
+                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
+                lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+            for o in orders:
+                opp = o.get("opportunity_id")
+                lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+        except Exception:
+            log.exception(
+                "Não foi possível ligar pedidos (sale.order) ao lead de origem via "
+                "'opportunity_id' — receita ficará vazia neste ciclo até isso ser corrigido."
+            )
+
     pedidos_mes_atual_count = 0
     for r in lines:
         order = r.get("order_id")
+        order_id_num = order[0] if order else None
+        stage_name_lead = lead_stage_by_order.get(order_id_num)
+        flags_lead = classify_stage(stage_name_lead)
+        if not (flags_lead["concluido"] or flags_lead["em_tramite"]):
+            continue
         order_name = order[1].strip().upper() if order else None
         if order_name and order_name in force_include_orders:
             pedidos_mes_atual_count += 1
