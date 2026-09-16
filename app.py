@@ -357,6 +357,94 @@ def api_data():
         return jsonify(_state)
 
 
+@app.route("/api/export_linhas_mes")
+def export_linhas_mes():
+    """Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
+    no cálculo de receita: create_date do mês OU pedido em
+    config/pedidos_mes_atual.txt), uma linha por produto vendido, com
+    cliente, número do pedido, PV/Supervisor/Consultor, categoria de
+    produto, tipo de solicitação, valor, etapa do lead e se conta como
+    receita — pra auditoria detalhada (a Isabela pediu em 2026-09-16).
+    """
+    now = dt.datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start_str = month_start.strftime("%Y-%m-%d %H:%M:%S")
+
+    uid_map = build_user_id_map(crm.search_read)
+
+    lines_domain = [["create_date", ">=", start_str]]
+    if PEDIDOS_MES_ATUAL:
+        lines_domain = ["|", ["create_date", ">=", start_str], ["order_id.name", "in", sorted(PEDIDOS_MES_ATUAL)]]
+    lines = crm.search_read(
+        "sale.order.line", lines_domain,
+        fields=["product_id", "request_type_id", "price_total", "salesman_id", "order_id",
+                "order_partner_id", "create_date"],
+        limit=0,
+    )
+
+    product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
+    prod_categ = {}
+    if product_ids:
+        prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
+        prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
+
+    order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
+    lead_stage_by_order = {}
+    lookup_erro = None
+    if order_ids:
+        try:
+            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
+            lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
+            lead_stage = {}
+            if lead_ids:
+                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
+                lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+            for o in orders:
+                opp = o.get("opportunity_id")
+                lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+        except Exception as exc:  # noqa: BLE001
+            lookup_erro = str(exc)
+
+    out = []
+    for r in lines:
+        order = r.get("order_id")
+        order_name = order[1].strip().upper() if order else None
+        order_id_num = order[0] if order else None
+        stage_name_lead = lead_stage_by_order.get(order_id_num)
+        flags_lead = classify_stage(stage_name_lead)
+        req_name = r["request_type_id"][1] if r.get("request_type_id") else None
+        prod_id = r["product_id"][0] if r.get("product_id") else None
+        categ_name = prod_categ.get(prod_id)
+        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat)]
+        salesman = r.get("salesman_id")
+        info = uid_map.get(salesman[0]) if salesman else None
+        out.append({
+            "pv": info["pv"] if info else None,
+            "supervisor": info["supervisor"] if info else None,
+            "consultor": info["nome"] if info else (salesman[1] if salesman else None),
+            "cliente": r["order_partner_id"][1] if r.get("order_partner_id") else None,
+            "pedido": order_name,
+            "create_date": r.get("create_date"),
+            "produto": r["product_id"][1] if r.get("product_id") else None,
+            "categoria_produto": categ_name,
+            "tipo_solicitacao": req_name,
+            "price_total": r.get("price_total"),
+            "lead_stage": stage_name_lead,
+            "lead_concluido_ou_em_tramite": bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+            "categorias_de_receita_que_bateram": categorias_ok,
+            "conta_como_receita": bool(categorias_ok) and bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+            "pedido_forcado_mes_atual": bool(order_name and order_name in PEDIDOS_MES_ATUAL),
+        })
+
+    return jsonify({
+        "periodo": now.strftime("%m/%Y"),
+        "gerado_em": now.isoformat() + "Z",
+        "total_linhas": len(out),
+        "erro_lookup_lead": lookup_erro,
+        "linhas": out,
+    })
+
+
 @app.route("/api/debug_pedidos")
 def debug_pedidos():
     """Diagnóstico manual: mostra, pra uma lista de números de pedido
