@@ -41,7 +41,30 @@
   .meter .marker { position: absolute; top: -4px; width: 4px; height: 20px; border-radius: 2px; background: #17131a; }
   .meta-rows { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
   .meta-rows b { display: block; font-size: 14px; color: var(--text-primary); }
-  .falta { color: var(--bad); }
+  .meta-rows b.falta { color: var(--bad); }
+
+  .status-chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .status-chip {
+    display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-secondary);
+    background: #f7f5f8; border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px 6px 10px;
+  }
+  .status-chip b { font-size: 13px; color: var(--text-primary); font-weight: 700; }
+  .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-chip.concluido .dot { background: var(--good); }
+  .status-chip.tramite .dot { background: var(--warn); }
+
+  .pdu-card .pdu-main { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-top: 6px; }
+  .pdu-card .pdu-destaque { min-width: 150px; }
+  .pdu-card .pdu-destaque .lbl { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pdu-card .pdu-destaque .valor { font-size: 34px; font-weight: 700; color: var(--brand-purple); line-height: 1; }
+  .pdu-card .pdu-destaque .valor.falta { color: var(--bad); }
+  .pdu-card .pdu-secundario {
+    display: flex; gap: 28px; flex-wrap: wrap; flex: 1;
+    padding-left: 24px; border-left: 1px solid var(--gridline); min-width: 260px;
+  }
+  .pdu-card .pdu-secundario div { display: flex; flex-direction: column; gap: 3px; }
+  .pdu-card .pdu-secundario span { font-size: 11px; color: var(--text-secondary); }
+  .pdu-card .pdu-secundario b { font-size: 15px; color: var(--text-primary); }
 
   .produto-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
   .produto-tile { text-align: center; }
@@ -246,9 +269,9 @@ function renderSlide() {
         <div>Realizado<b>${fmtBRL(realizadoTotal)}</b></div>
         <div>Falta bater<b class="falta">${metaTotal > 0 ? fmtBRL(falta) : '—'}</b></div>
       </div>
-      <div class="meta-rows" style="margin-top:10px">
-        <div>Receita Concluída<b>${fmtBRL(c.receita_total_status.concluido)}</b></div>
-        <div>Receita Em Trâmite<b>${fmtBRL(c.receita_total_status.em_tramite)}</b></div>
+      <div class="status-chips">
+        <span class="status-chip concluido"><span class="dot"></span>Concluída <b>${fmtBRL(c.receita_total_status.concluido)}</b></span>
+        <span class="status-chip tramite"><span class="dot"></span>Em Trâmite <b>${fmtBRL(c.receita_total_status.em_tramite)}</b></span>
       </div>
     </div>
 
@@ -301,13 +324,19 @@ function renderSlide() {
 // restam, então esse número sobe ou desce de acordo com o ritmo real.
 function pduHtml(pdu, dias) {
   if (!pdu || !dias) return '';
-  return `<div class="card" style="grid-column: span 3;">
+  return `<div class="card pdu-card" style="grid-column: span 3;">
     <span class="tag">📅 PDU — Produção por Dia Útil</span>
-    <h2>Ritmo necessário (Receita Total)</h2>
-    <div class="meta-rows">
-      <div>PDU inicial (plano ÷ dias úteis)<b>${pdu.pdu_inicial != null ? fmtBRL(pdu.pdu_inicial) : '—'}</b></div>
-      <div>PDU necessário agora<b class="${pdu.falta > 0 ? 'falta' : ''}">${fmtBRL(pdu.pdu_necessario)}</b></div>
-      <div>Falta bater no mês<b>${fmtBRL(pdu.falta)}</b></div>
+    <h2>Ritmo necessário por dia útil (Receita Total)</h2>
+    <div class="pdu-main">
+      <div class="pdu-destaque">
+        <div class="lbl">PDU necessário agora</div>
+        <div class="valor ${pdu.falta > 0 ? 'falta' : ''}">${fmtBRL(pdu.pdu_necessario)}</div>
+      </div>
+      <div class="pdu-secundario">
+        <div><span>PDU inicial (plano ÷ dias úteis)</span><b>${pdu.pdu_inicial != null ? fmtBRL(pdu.pdu_inicial) : '—'}</b></div>
+        <div><span>Falta bater no mês</span><b>${fmtBRL(pdu.falta)}</b></div>
+        <div><span>Dias úteis restantes</span><b>${dias.dias_uteis_restantes} de ${dias.dias_uteis_totais}</b></div>
+      </div>
     </div>
     <div class="funil-note">
       Mês: ${dias.inicio.split('-').reverse().join('/')} a ${dias.fim.split('-').reverse().join('/')} ·
