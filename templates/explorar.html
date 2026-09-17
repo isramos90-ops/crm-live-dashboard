@@ -175,15 +175,26 @@ function fotoFor(nome) {
 
 // Fotos "especiais" pra níveis que não são uma pessoa (PV e equipe), pedido
 // da Isabela em 2026-09-16: na visão geral do PV 02, mostrar a foto do
-// Flávio (proprietário); na visão geral da Equipe Carteira do PV 02, a foto
-// dela mesma (Isabela), já que ela é a supervisora dessa equipe. Usa
-// arquivos com nome próprio (não "flavio.jpg"/"isabela.jpg") pra não colidir
-// com o casamento por primeiro nome do fotoFor() — existem consultores reais
-// chamados Flavio (ex: "Flavio Manoel", PV03) que não podem herdar a foto do
-// dono por engano.
+// Flávio (proprietário). Usa um arquivo com nome próprio (não "flavio.jpg")
+// pra não colidir com o casamento por primeiro nome do fotoFor() — existe
+// um consultor real chamado Flavio (ex: "Flavio Manoel", PV03) que não pode
+// herdar a foto do dono por engano.
+//
+// Nível "equipe" (2026-09-17, corrigido a pedido da Isabela): a maioria das
+// equipes leva o nome de quem é o supervisor/dono dela (ex: "EQUIPE
+// ALEXANDRE" -> Alexandre Ornellas, "EQUIPE RICHARD" -> Richard Oliveira de
+// Souza), então a foto é buscada normalmente pelo primeiro nome via
+// fotoFor() usando o sufixo da equipe (o que vem depois de "EQUIPE "). A
+// exceção é "EQUIPE CARTEIRA" do PV 02: não existe ninguém chamado
+// "Carteira", então mostra a foto da própria Isabela, que é a supervisora
+// real dessa equipe.
 function specialFoto(label, keyType, pv) {
   if (keyType === 'pv' && label === 'PV 02') return STATIC_BASE + 'fotos/flavio-dono-pv02.jpg';
-  if (keyType === 'supervisor' && pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
+  if (keyType === 'supervisor') {
+    if (pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
+    const suffix = label.replace(/^EQUIPE\s+/i, '');
+    return fotoFor(suffix);
+  }
   return null;
 }
 

@@ -284,19 +284,29 @@ divulgada, mas não coloque nada além dos próprios dados do CRM nelas):
   adicionar/remover outra equipe dessa mesma exclusão, edite o conjunto
   `EXCLUDED_FROM_PV_TOTAL` em `hierarchy.py` (usa o nome completo da equipe,
   ex: `"PV 02 - Equipe Elton"`).
-- **Fotos especiais para PV 02 e Equipe Carteira** (`/explorar`, pedido da
-  Isabela): como o nível "PV" e o nível "Equipe" não são pessoas, normalmente
-  aparecem sem foto (avatar "PV"/"EQ"). Duas exceções: a visão geral do
-  **PV 02** mostra a foto do **Flávio** (proprietário — arquivo
-  `static/fotos/flavio-dono-pv02.jpg`), e a visão geral da **Equipe
-  Carteira dentro do PV 02** mostra a foto da própria **Isabela**
-  (supervisora dessa equipe — arquivo `static/fotos/isabela-supervisora.jpg`).
-  Essas duas fotos usam nomes de arquivo próprios (não `flavio.jpg`/
-  `isabela.jpg`) de propósito, pra não colidir com o casamento automático por
-  primeiro nome do `fotos.py` — existe um consultor real chamado "Flavio
-  Manoel" (PV03) que precisa continuar aparecendo com as iniciais "FM", não
-  com a foto do dono. Essas fotos só aparecem no `/explorar`; o `/tv` nunca
-  mostra visão de PV nem de equipe (só consultor individual), então não é
+- **Fotos no nível "PV" e "Equipe"** (`/explorar`): esses níveis não são uma
+  pessoa, então por padrão apareceriam sem foto (avatar "PV"/"EQ"). Duas
+  regras (a 2ª corrigida em 2026-09-17 a pedido da Isabela, depois que
+  "EQUIPE ALEXANDRE"/"EQUIPE RICHARD" continuaram sem foto na 1ª versão):
+  - **PV 02**: sempre mostra a foto do **Flávio** (proprietário — arquivo
+    `static/fotos/flavio-dono-pv02.jpg`, com nome de arquivo próprio, não
+    `flavio.jpg`, pra não colidir com o casamento automático por primeiro
+    nome do `fotos.py` — existe um consultor real chamado "Flavio Manoel"
+    no PV03 que precisa continuar com as iniciais "FM", não a foto do dono).
+    Outros PVs (ex: PV03) continuam com o avatar "PV".
+  - **Qualquer equipe**: como a maioria das equipes leva o nome de quem é
+    o supervisor/dono dela (ex: "EQUIPE ALEXANDRE" → Alexandre Ornellas,
+    "EQUIPE RICHARD" → Richard Oliveira de Souza, "EQUIPE ELTON" → Elton
+    Bitencourt), a foto é buscada normalmente pelo primeiro nome (mesmo
+    casamento do `fotos.py`, usando o texto depois de "EQUIPE "). Quando
+    existe o arquivo (ex: `alexandre.jpg`, `richard.jpg`, `elton.jpg`),
+    aparece; quando não existe, cai no avatar "EQ" como antes. A única
+    exceção é a **Equipe Carteira do PV 02**, onde ninguém se chama
+    "Carteira" — nesse caso mostra a foto da própria **Isabela**
+    (supervisora real dessa equipe — arquivo
+    `static/fotos/isabela-supervisora.jpg`).
+  Essas fotos só aparecem no `/explorar`; o `/tv` nunca mostra visão de PV
+  nem de equipe (só consultor individual), então não é
   afetado.
 
 ## Observações e próximos ajustes possíveis
