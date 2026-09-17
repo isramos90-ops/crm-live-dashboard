@@ -372,6 +372,10 @@ function render(pvNode, supNode) {
         <div>Realizado<b>${fmtBRL(realizadoTotal)}</b></div>
         <div>Falta bater<b class="falta">${metaTotal > 0 ? fmtBRL(falta) : '—'}</b></div>
       </div>
+      <div class="meta-rows" style="margin-top:10px">
+        <div>Receita Concluída<b>${fmtBRL(node.receita_total_status.concluido)}</b></div>
+        <div>Receita Em Trâmite<b>${fmtBRL(node.receita_total_status.em_tramite)}</b></div>
+      </div>
     </div>
 
     <div class="card">
@@ -412,7 +416,31 @@ function render(pvNode, supNode) {
       </div>
       <div class="funil-note">Cobertura de carteira: ${fmtNum(node.aceite_enviado)} fechados de ${fmtNum(node.total)} leads (${coberturaPct.toFixed(1)}%) · ${fmtNum(node.atendido)} atendidos no total.</div>
     </div>
+
+    ${pduHtml(node.pdu, LAST_DATA.periods.month.dias_uteis)}
   `;
+}
+
+// PDU (Produção por Dia Útil, pedido da Isabela em 2026-09-17): plano
+// comercial (Receita Total) dividido pelos dias úteis do mês; conforme os
+// dias passam, o que falta bater é redividido pelos dias úteis que ainda
+// restam, então esse número sobe ou desce de acordo com o ritmo real.
+function pduHtml(pdu, dias) {
+  if (!pdu || !dias) return '';
+  return `<div class="card" style="grid-column: span 3;">
+    <span class="tag">📅 PDU — Produção por Dia Útil</span>
+    <h2>Ritmo necessário (Receita Total)</h2>
+    <div class="meta-rows">
+      <div>PDU inicial (plano ÷ dias úteis)<b>${pdu.pdu_inicial != null ? fmtBRL(pdu.pdu_inicial) : '—'}</b></div>
+      <div>PDU necessário agora<b class="${pdu.falta > 0 ? 'falta' : ''}">${fmtBRL(pdu.pdu_necessario)}</b></div>
+      <div>Falta bater no mês<b>${fmtBRL(pdu.falta)}</b></div>
+    </div>
+    <div class="funil-note">
+      Mês: ${dias.inicio.split('-').reverse().join('/')} a ${dias.fim.split('-').reverse().join('/')} ·
+      ${dias.dias_uteis_decorridos} de ${dias.dias_uteis_totais} dias úteis já passaram ·
+      faltam ${dias.dias_uteis_restantes} dias úteis.
+    </div>
+  </div>`;
 }
 
 document.getElementById('sel-pv').addEventListener('change', (e) => {

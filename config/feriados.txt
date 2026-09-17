@@ -1,0 +1,42 @@
+# Feriados considerados "dia não útil" no cálculo do PDU (Produção por Dia
+# Útil) — ver dias_uteis.py. Um por linha, formato DD/MM/AAAA. Linhas em
+# branco ou começando com "#" são ignoradas.
+#
+# Já vem preenchido com os feriados nacionais (incluindo os "pontos
+# facultativos" de Carnaval e Corpus Christi, que a maioria das empresas
+# trata como não útil) de 2026 e 2027. Pra adicionar um feriado municipal/
+# estadual (ex: de Minas Gerais ou da cidade onde a equipe trabalha), é só
+# acrescentar uma linha nesse mesmo formato e reiniciar o serviço. Se algum
+# desses feriados nacionais não for considerado "não útil" na operação da
+# Isabela (ex: Corpus Christi, que não é feriado em todo lugar), é só apagar
+# a linha correspondente.
+
+# --- 2026 ---
+01/01/2026  # Confraternização Universal
+16/02/2026  # Carnaval (segunda)
+17/02/2026  # Carnaval (terça)
+03/04/2026  # Sexta-feira Santa
+21/04/2026  # Tiradentes
+01/05/2026  # Dia do Trabalho
+04/06/2026  # Corpus Christi
+07/09/2026  # Independência do Brasil
+12/10/2026  # Nossa Senhora Aparecida
+02/11/2026  # Finados
+15/11/2026  # Proclamação da República
+20/11/2026  # Dia Nacional de Zumbi e da Consciência Negra
+25/12/2026  # Natal
+
+# --- 2027 ---
+01/01/2027  # Confraternização Universal
+08/02/2027  # Carnaval (segunda)
+09/02/2027  # Carnaval (terça)
+26/03/2027  # Sexta-feira Santa
+21/04/2027  # Tiradentes
+01/05/2027  # Dia do Trabalho
+27/05/2027  # Corpus Christi
+07/09/2027  # Independência do Brasil
+12/10/2027  # Nossa Senhora Aparecida
+02/11/2027  # Finados
+15/11/2027  # Proclamação da República
+20/11/2027  # Dia Nacional de Zumbi e da Consciência Negra
+25/12/2027  # Natal

@@ -28,6 +28,7 @@ import odoo_client as crm
 import metas
 import fotos
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
+import dias_uteis
 import hierarchy as hierarchy_mod
 from hierarchy import build_user_id_map
 
@@ -78,6 +79,12 @@ def new_metric_bucket():
         "total": 0, "atendido": 0, "convertido": 0, "proposta_enviada": 0,
         "aceite_enviado": 0, "proposta_recusada": 0, "concluido": 0, "em_tramite": 0,
         "movimentacoes": 0,
+        # Receita Total realizada, quebrada por etapa do lead de origem
+        # (pedido da Isabela em 2026-09-17) — mantém "revenue" como já era
+        # (usado pra Plano x Realizado e pro grid de produtos), só adiciona
+        # essa quebra específica de RECEITA TOTAL pra mostrar quanto do
+        # realizado já está CONCLUIDO e quanto ainda está EM TRAMITE.
+        "receita_total_status": {"concluido": 0.0, "em_tramite": 0.0},
         "revenue": {cat: {"qtd": 0, "receita": 0.0} for cat in REVENUE_CATEGORIES},
     }
 
@@ -123,7 +130,7 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
 
 
-def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
+def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, dias_uteis_info=None):
     start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
     force_include_orders = force_include_orders or set()
 
@@ -229,18 +236,25 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
         price = r.get("price_total") or 0.0
         salesman = r.get("salesman_id")
         buckets = hierarchy_buckets(pv_tree, uid_map, salesman[0] if salesman else None)
+        status_key = "concluido" if flags_lead["concluido"] else "em_tramite"
         for cat in REVENUE_CATEGORIES:
             if line_matches_category(categ_name, req_name, cat):
                 root["revenue"][cat]["qtd"] += 1
                 root["revenue"][cat]["receita"] += price
+                if cat == "RECEITA TOTAL":
+                    root["receita_total_status"][status_key] += price
                 if buckets:
                     for b in buckets:
                         b["revenue"][cat]["qtd"] += 1
                         b["revenue"][cat]["receita"] += price
+                        if cat == "RECEITA TOTAL":
+                            b["receita_total_status"][status_key] += price
     root["revenue"] = {c: {"qtd": v["qtd"], "receita": round(v["receita"], 2)} for c, v in root["revenue"].items()}
+    root["receita_total_status"] = {k: round(v, 2) for k, v in root["receita_total_status"].items()}
 
     def round_bucket_revenue(bucket):
         bucket["revenue"] = {c: {"qtd": v["qtd"], "receita": round(v["receita"], 2)} for c, v in bucket["revenue"].items()}
+        bucket["receita_total_status"] = {k: round(v, 2) for k, v in bucket["receita_total_status"].items()}
 
     # ---------- Movimentações de etapa no período, por consultor ----------
     # Busca os registros individuais (em vez de read_group) para poder
@@ -273,6 +287,17 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
     # RECEITA_RENOVACAO, RECEITA_APARELHOS} — metas de config/metas.xlsx
     # (equipe = meta do supervisor daquela equipe; consultor = meta individual;
     # PV = soma das metas das equipes/supervisores daquele PV).
+    #
+    # PDU (Produção por Dia Útil, pedido da Isabela em 2026-09-17): só faz
+    # sentido pro período "mês atual" (dias_uteis_info vem preenchido só
+    # nesse caso — ver collect_data) — pra "últimos N dias" não se aplica,
+    # por isso "pdu" fica None nesse período.
+    def pdu_com_realizado(meta_dict, metrics_bucket):
+        if not dias_uteis_info:
+            return None
+        realizado = metrics_bucket["revenue"]["RECEITA TOTAL"]["receita"]
+        return dias_uteis.calcula_pdu(meta_dict.get("RECEITA_TOTAL"), realizado, dias_uteis_info)
+
     hierarchy = []
     for pv, pv_node in sorted(pv_tree.items()):
         round_bucket_revenue(pv_node["metrics"])
@@ -290,18 +315,28 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None):
             consultores = []
             for nome, metrics_bucket in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
                 round_bucket_revenue(metrics_bucket)
-                consultores.append({"nome": nome, "meta": metas.meta_for_usuario(nome), **metrics_bucket})
+                cons_meta = metas.meta_for_usuario(nome)
+                consultores.append({
+                    "nome": nome, "meta": cons_meta, "pdu": pdu_com_realizado(cons_meta, metrics_bucket),
+                    **metrics_bucket,
+                })
             supervisors.append({
-                "supervisor": sup, "meta": sup_meta, **sup_node["metrics"], "consultores": consultores,
+                "supervisor": sup, "meta": sup_meta, "pdu": pdu_com_realizado(sup_meta, sup_node["metrics"]),
+                **sup_node["metrics"], "consultores": consultores,
             })
+        pv_meta = metas.sum_metas(*pv_metas)
         hierarchy.append({
-            "pv": pv, "meta": metas.sum_metas(*pv_metas), **pv_node["metrics"], "supervisors": supervisors,
+            "pv": pv, "meta": pv_meta, "pdu": pdu_com_realizado(pv_meta, pv_node["metrics"]),
+            **pv_node["metrics"], "supervisors": supervisors,
         })
 
+    root_meta = metas.sum_metas(*[pv["meta"] for pv in hierarchy])
     return {
         "label": label,
         "root": root,
-        "root_meta": metas.sum_metas(*[pv["meta"] for pv in hierarchy]),
+        "root_meta": root_meta,
+        "root_pdu": pdu_com_realizado(root_meta, root),
+        "dias_uteis": dias_uteis_info,
         "team_ranking": team_ranking,
         "top_consultores": top_consultores,
         "hierarchy": hierarchy,
@@ -317,10 +352,19 @@ def collect_data():
 
     uid_map = build_user_id_map(crm.search_read)
 
+    # "Hoje" no horário de Brasília (UTC-3) pro cálculo de PDU — usar a data
+    # em UTC direto erraria o dia perto da meia-noite (ex: 23h em Brasília
+    # já é dia seguinte em UTC).
+    hoje_br = (now - dt.timedelta(hours=3)).date()
+    dias_uteis_info = dias_uteis.info_dias_uteis(hoje_br)
+
     # PEDIDOS_MES_ATUAL só se aplica ao período "mês atual" — são pedidos de
     # um mês anterior que a Isabela quer contar como receita deste mês
     # mesmo assim (ver config/pedidos_mes_atual.txt).
-    month = compute_period_metrics(month_start, now.strftime("%m/%Y"), uid_map, force_include_orders=PEDIDOS_MES_ATUAL)
+    month = compute_period_metrics(
+        month_start, now.strftime("%m/%Y"), uid_map,
+        force_include_orders=PEDIDOS_MES_ATUAL, dias_uteis_info=dias_uteis_info,
+    )
     last_n_label = "Últimos {}d ({} a {})".format(
         LAST_N_DAYS, last_n_start.strftime("%d/%m"), now.strftime("%d/%m"),
     )

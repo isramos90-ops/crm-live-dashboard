@@ -309,6 +309,54 @@ divulgada, mas não coloque nada além dos próprios dados do CRM nelas):
   nem de equipe (só consultor individual), então não é
   afetado.
 
+## PDU — Produção por Dia Útil (2026-09-17, pedido da Isabela)
+
+Novo card "📅 PDU — Produção por Dia Útil" no `/tv` (por consultor) e no
+`/explorar` (em qualquer nível: PV, equipe ou consultor), logo abaixo do
+Funil de vendas. Mostra quanto cada nível precisa "bater" de Receita Total
+por dia útil pra fechar o Plano Comercial do mês:
+
+- **PDU inicial** = Plano Comercial ÷ dias úteis totais do mês — o ritmo que
+  seria necessário se desse pra dividir tudo igualzinho desde o dia 1.
+- **PDU necessário agora** = (Plano Comercial − Realizado) ÷ dias úteis que
+  ainda restam no mês — esse é o número que importa no dia a dia, porque já
+  desconta o que já foi vendido e redivide o que falta pelos dias úteis que
+  sobraram. Sobe se as vendas estão atrasadas em relação ao ritmo esperado,
+  desce se estão adiantadas.
+- Também mostra quantos dias úteis já passaram e quantos ainda restam no
+  período considerado.
+
+**Período do mês considerado**: dias úteis = segunda a sexta, exceto
+feriados. A lista de feriados fica em **`config/feriados.txt`** (um por
+linha, formato `DD/MM/AAAA`, já vem preenchida com os feriados nacionais de
+2026 e 2027, incluindo Carnaval e Corpus Christi) — pra adicionar um feriado
+municipal/estadual ou remover um que não se aplica à operação, é só editar
+esse arquivo e reiniciar o serviço. O mês normalmente vai do dia 1 até o
+último dia do calendário, mas dá pra configurar um "dia de corte" diferente
+em `CORTE_MES` (no início de `dias_uteis.py`) pra meses em que o ciclo
+comercial fecha antes — já está configurado **setembro/2026 fechando dia
+29** (pedido explícito da Isabela: "do dia 01/09 até dia 29/09"). "Hoje" é
+calculado no horário de Brasília (UTC-3), não no horário do servidor (UTC),
+pra não errar a contagem de dias perto da meia-noite.
+
+**Nota**: o PDU hoje é calculado só em cima da Receita Total (o indicador
+principal "Plano Comercial x Realizado"). Se a Isabela quiser um PDU
+separado por produto (Renovação, Aparelhos, Banda Larga) depois, dá pra
+estender.
+
+## Receita Concluída x Receita Em Trâmite (2026-09-17, pedido da Isabela)
+
+Dentro do card do indicador principal ("Plano Comercial x Realizado —
+Receita Total") em `/tv` e `/explorar`, além das linhas que já existiam
+(Plano Comercial / Realizado / Falta bater), agora tem mais duas: **Receita
+Concluída** e **Receita Em Trâmite** — a quebra do valor já Realizado de
+Receita Total pela etapa do lead de origem (mesma classificação
+CONCLUIDO/EM TRAMITE de `config/etapas_estagio.xlsx` usada no resto do
+painel). As duas juntas somam exatamente o "Realizado" de cima, porque só
+pedido cujo lead está em uma dessas duas etapas conta como receita (ver
+seção de Metodologia). Essa quebra vale nos três níveis (PV, equipe,
+consultor).
+
 ## Observações e próximos ajustes possíveis
 
 - "Assistente Plus" (uid 1) aparece com muitas movimentações — parece ser uma
