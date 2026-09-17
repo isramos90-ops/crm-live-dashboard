@@ -82,5 +82,16 @@ def is_movement_stage(stage_name):
     return norm(stage_name) not in NON_MOVEMENT_STAGES_NORM
 
 
-def line_matches_category(categ_name, req_name, category):
+# Produtos com categoria errada cadastrada no Odoo (confirmado pela Isabela em
+# 2026-09-17): "CHIP DE DADOS 100GB" vem categorizado como "All / Fixa Básica -
+# Dados" (a mesma categoria da banda larga fixa), mas na prática é uma linha de
+# voz/dado móvel, não banda larga. Por isso é excluído especificamente da
+# categoria BANDA LARGA, mesmo batendo na categoria de produto.
+MISCATEGORIZED_AS_BANDA_LARGA = {"CHIP DE DADOS 100GB"}
+MISCATEGORIZED_AS_BANDA_LARGA_NORM = {norm(s) for s in MISCATEGORIZED_AS_BANDA_LARGA}
+
+
+def line_matches_category(categ_name, req_name, category, prod_name=None):
+    if category == "BANDA LARGA" and prod_name is not None and norm(prod_name) in MISCATEGORIZED_AS_BANDA_LARGA_NORM:
+        return False
     return norm(categ_name) in PROD_SETS[category] and norm(req_name) in SOLIC_SETS[category]

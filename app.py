@@ -233,12 +233,13 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
         categ_name = prod_categ.get(prod_id)
+        prod_name = r["product_id"][1] if r.get("product_id") else None
         price = r.get("price_total") or 0.0
         salesman = r.get("salesman_id")
         buckets = hierarchy_buckets(pv_tree, uid_map, salesman[0] if salesman else None)
         status_key = "concluido" if flags_lead["concluido"] else "em_tramite"
         for cat in REVENUE_CATEGORIES:
-            if line_matches_category(categ_name, req_name, cat):
+            if line_matches_category(categ_name, req_name, cat, prod_name=prod_name):
                 root["revenue"][cat]["qtd"] += 1
                 root["revenue"][cat]["receita"] += price
                 if cat == "RECEITA TOTAL":
@@ -486,7 +487,8 @@ def export_linhas_mes():
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
         categ_name = prod_categ.get(prod_id)
-        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat)]
+        prod_name = r["product_id"][1] if r.get("product_id") else None
+        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat, prod_name=prod_name)]
         salesman = r.get("salesman_id")
         info = uid_map.get(salesman[0]) if salesman else None
         out.append({
@@ -579,7 +581,8 @@ def debug_pedidos():
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
         categ_name = prod_categ.get(prod_id)
-        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat)]
+        prod_name = r["product_id"][1] if r.get("product_id") else None
+        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat, prod_name=prod_name)]
         out.append({
             "pedido": order_name,
             "create_date": r.get("create_date"),
