@@ -154,6 +154,10 @@
     <label for="sel-cons">Consultor</label>
     <select id="sel-cons"></select>
   </div>
+  <div class="campo">
+    <label for="sel-tag">Tag / Marcador</label>
+    <select id="sel-tag"></select>
+  </div>
 </div>
 
 <main id="main">
@@ -228,6 +232,7 @@ let LAST_DATA = null;
 let SEL_PV = null;
 let SEL_SUP = VALOR_TODOS;   // VALOR_TODOS = "visão geral do PV"
 let SEL_CONS = VALOR_TODOS;  // VALOR_TODOS = "visão geral do supervisor"
+let SEL_TAG = VALOR_TODOS;   // VALOR_TODOS = "ver por PV/Supervisor/Consultor" (ignora tag)
 
 async function fetchData() {
   try {
@@ -266,6 +271,7 @@ function rebuildSelectsAndRender() {
   const selPvEl = document.getElementById('sel-pv');
   const selSupEl = document.getElementById('sel-sup');
   const selConsEl = document.getElementById('sel-cons');
+  const selTagEl = document.getElementById('sel-tag');
 
   const pvOptions = hierarchy.map(p => ({ value: p.pv, label: p.pv }));
   SEL_PV = populateSelect(selPvEl, pvOptions, SEL_PV || hierarchy[0].pv);
@@ -288,6 +294,25 @@ function rebuildSelectsAndRender() {
     selConsEl.disabled = true;
   }
   SEL_CONS = populateSelect(selConsEl, consOptions, SEL_CONS);
+
+  // Tag/Marcador (pedido da Isabela em 2026-09-21): eixo à parte da
+  // hierarquia PV/Supervisor/Consultor — ao escolher uma tag específica,
+  // o painel mostra o resultado agregado daquela tag (todos os PVs juntos)
+  // em vez do PV/Supervisor/Consultor selecionado.
+  const tags = period.tags || [];
+  const tagOptions = [{ value: VALOR_TODOS, label: '— Todas (ver por PV/Supervisor/Consultor) —' }]
+    .concat(tags.map(t => ({ value: t.tag, label: t.tag })));
+  SEL_TAG = populateSelect(selTagEl, tagOptions, SEL_TAG);
+  selPvEl.disabled = selSupEl.disabled = (SEL_TAG !== VALOR_TODOS);
+  if (SEL_TAG !== VALOR_TODOS) selConsEl.disabled = true;
+
+  if (SEL_TAG !== VALOR_TODOS) {
+    const tagNode = tags.find(t => t.tag === SEL_TAG);
+    if (tagNode) {
+      renderCore(tagNode, tagNode.tag, 'Tag / Marcador do CRM', null, tags, 'tag', false);
+      return;
+    }
+  }
 
   render(pvNode, supNode);
 }
@@ -337,6 +362,10 @@ function render(pvNode, supNode) {
     isPessoa = true;
   }
 
+  renderCore(node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa, (SEL_SUP === VALOR_TODOS || !supNode) ? 'PV' : 'EQ', pvNode.pv);
+}
+
+function renderCore(node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa, fallbackAvatarText, pvLabelForRanking) {
   document.getElementById('hd-nome').textContent = nivelLabel;
   document.getElementById('hd-cargo').textContent = subLabel;
   const avatarEl = document.getElementById('hd-initials');
@@ -347,7 +376,7 @@ function render(pvNode, supNode) {
     avatarEl.textContent = initials(nivelLabel).toUpperCase();
   } else {
     avatarEl.innerHTML = '';
-    avatarEl.textContent = (SEL_SUP === VALOR_TODOS || !supNode) ? 'PV' : 'EQ';
+    avatarEl.textContent = fallbackAvatarText || (peerNameKey === 'tag' ? '#' : '');
   }
 
   const realizadoTotal = node.revenue['RECEITA TOTAL'].receita;
@@ -370,7 +399,7 @@ function render(pvNode, supNode) {
     .sort((a, b) => b.p - a.p)
     .slice(0, 3)
     .map((s, i) => {
-      const foto = specialFoto(s.nome, peerNameKey, pvNode.pv) || fotoFor(s.nome);
+      const foto = (peerNameKey === 'tag') ? null : (specialFoto(s.nome, peerNameKey, pvLabelForRanking) || fotoFor(s.nome));
       const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
       return `<div class="ranking-card rank-${i+1}">
         <div class="ranking-photo">
@@ -482,6 +511,10 @@ document.getElementById('sel-sup').addEventListener('change', (e) => {
 });
 document.getElementById('sel-cons').addEventListener('change', (e) => {
   SEL_CONS = e.target.value;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-tag').addEventListener('change', (e) => {
+  SEL_TAG = e.target.value;
   rebuildSelectsAndRender();
 });
 
