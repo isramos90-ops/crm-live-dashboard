@@ -620,6 +620,50 @@ def debug_pedidos():
     })
 
 
+@app.route("/api/debug_tags")
+def debug_tags():
+    """Diagnóstico manual: descobre em qual modelo do Odoo (sale.order ou
+    crm.lead) mora o campo de Tag/Marcador que a Isabela vê na lista do CRM
+    (ex: "#RENOVAÇÃOMOVELSETEMBRO"), e mostra o valor desse campo pra um ou
+    mais pedidos de exemplo. Uso: /api/debug_tags?nomes=S55936
+    """
+    nomes_param = request.args.get("nomes", "")
+    nomes = [n.strip().upper() for n in nomes_param.split(",") if n.strip()]
+
+    resultado = {"campos_com_tag": {}, "amostras": {}, "erro": None}
+
+    try:
+        for model in ("sale.order", "crm.lead"):
+            fields_info = crm.execute_kw(model, "fields_get", [], {"attributes": ["string", "type", "relation"]})
+            achados = {
+                nome: info
+                for nome, info in fields_info.items()
+                if "tag" in nome.lower() or "tag" in (info.get("string") or "").lower()
+            }
+            resultado["campos_com_tag"][model] = achados
+    except Exception as exc:  # noqa: BLE001
+        resultado["erro"] = f"erro ao ler fields_get: {exc}"
+
+    if nomes:
+        try:
+            orders = crm.search_read(
+                "sale.order", [["name", "in", nomes]],
+                fields=["id", "name", "opportunity_id"] + list(resultado["campos_com_tag"].get("sale.order", {}).keys()),
+                limit=0,
+            )
+            resultado["amostras"]["sale.order"] = orders
+
+            opp_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
+            if opp_ids:
+                lead_fields = ["id", "name"] + list(resultado["campos_com_tag"].get("crm.lead", {}).keys())
+                leads = crm.execute_kw("crm.lead", "read", [opp_ids], {"fields": lead_fields})
+                resultado["amostras"]["crm.lead"] = leads
+        except Exception as exc:  # noqa: BLE001
+            resultado["erro_amostra"] = str(exc)
+
+    return jsonify(resultado)
+
+
 def start_background_refresh():
     t = threading.Thread(target=refresh_loop, daemon=True)
     t.start()
