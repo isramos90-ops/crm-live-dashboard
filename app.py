@@ -130,12 +130,37 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
 
 
+_TAG_NAME_CACHE = {}
+SEM_TAG_KEY = "__SEM_TAG__"
+
+
+def resolve_tag_names(tag_ids):
+    """Busca (com cache em memória do processo) o nome de cada tag/marcador
+    do CRM (modelo crm.tag) a partir dos IDs vistos em tag_ids de crm.lead —
+    ver /api/debug_tags, que confirmou que a tag/marcador que a Isabela usa
+    pra saber qual campanha/lead o consultor está trabalhando vive no Lead
+    (crm.lead.tag_ids), não no Pedido de Venda."""
+    missing = sorted({t for t in tag_ids if t not in _TAG_NAME_CACHE})
+    if missing:
+        try:
+            recs = crm.execute_kw("crm.tag", "read", [missing], {"fields": ["id", "name"]})
+            for r in recs:
+                _TAG_NAME_CACHE[r["id"]] = r["name"]
+        except Exception:  # noqa: BLE001
+            log.exception("Não foi possível resolver nomes de tags/marcadores (crm.tag)")
+    return {t: _TAG_NAME_CACHE.get(t, f"Tag #{t}") for t in tag_ids}
+
+
 def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, dias_uteis_info=None):
     start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
     force_include_orders = force_include_orders or set()
 
     root = new_metric_bucket()
     pv_tree = {}
+    # tags_tree: quebra dos mesmos indicadores por Tag/Marcador do CRM (lead),
+    # pedido da Isabela em 2026-09-21, pra alimentar uma seleção de
+    # tag/marcador no Explorar — ver resolve_tag_names() e /api/debug_tags.
+    tags_tree = {}
     leads_fora_do_escopo = 0
 
     # ---------- Leads do período, por etapa ----------
@@ -144,7 +169,7 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
     # registros individuais (leve: só 3 campos) e agregamos aqui em Python.
     leads = crm.search_read(
         "crm.lead", [["create_date", ">=", start_str]],
-        fields=["stage_id", "team_id", "user_id"], limit=0,
+        fields=["stage_id", "team_id", "user_id", "tag_ids"], limit=0,
     )
 
     teams = {}
@@ -153,6 +178,8 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
         flags = classify_stage(stage_name)
 
         add_lead_to_bucket(root, stage_name, flags)
+        for tid_key in (l.get("tag_ids") or [SEM_TAG_KEY]):
+            add_lead_to_bucket(tags_tree.setdefault(tid_key, new_metric_bucket()), stage_name, flags)
 
         team_name = l["team_id"][1] if l.get("team_id") else "(sem equipe)"
         t = teams.setdefault(team_name, {"total": 0, "atendido": 0, "convertido": 0})
@@ -202,17 +229,21 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
     # como receita.
     order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
     lead_stage_by_order = {}
+    lead_tags_by_order = {}
     if order_ids:
         try:
             orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
             lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
             lead_stage = {}
+            lead_tags = {}
             if lead_ids:
-                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
+                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id", "tag_ids"]})
                 lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+                lead_tags = {l["id"]: (l.get("tag_ids") or []) for l in lead_recs}
             for o in orders:
                 opp = o.get("opportunity_id")
                 lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+                lead_tags_by_order[o["id"]] = lead_tags.get(opp[0], []) if opp else []
         except Exception:
             log.exception(
                 "Não foi possível ligar pedidos (sale.order) ao lead de origem via "
@@ -237,6 +268,7 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
         price = r.get("price_total") or 0.0
         salesman = r.get("salesman_id")
         buckets = hierarchy_buckets(pv_tree, uid_map, salesman[0] if salesman else None)
+        tags_for_line = lead_tags_by_order.get(order_id_num) or [SEM_TAG_KEY]
         status_key = "concluido" if flags_lead["concluido"] else "em_tramite"
         for cat in REVENUE_CATEGORIES:
             if line_matches_category(categ_name, req_name, cat, prod_name=prod_name):
@@ -250,6 +282,12 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
                         b["revenue"][cat]["receita"] += price
                         if cat == "RECEITA TOTAL":
                             b["receita_total_status"][status_key] += price
+                for tid_key in tags_for_line:
+                    tb = tags_tree.setdefault(tid_key, new_metric_bucket())
+                    tb["revenue"][cat]["qtd"] += 1
+                    tb["revenue"][cat]["receita"] += price
+                    if cat == "RECEITA TOTAL":
+                        tb["receita_total_status"][status_key] += price
     root["revenue"] = {c: {"qtd": v["qtd"], "receita": round(v["receita"], 2)} for c, v in root["revenue"].items()}
     root["receita_total_status"] = {k: round(v, 2) for k, v in root["receita_total_status"].items()}
 
@@ -331,6 +369,21 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
             **pv_node["metrics"], "supervisors": supervisors,
         })
 
+    # ---------- Quebra por Tag/Marcador do CRM ----------
+    # Mesmos indicadores de cima, agora agrupados pela tag/marcador do lead
+    # (ex: "#RENOVAÇÃOMOVELSETEMBRO"), independente de PV/Supervisor/
+    # Consultor — pedido da Isabela em 2026-09-21 pra um seletor de tag no
+    # Explorar. Uma tag sem plano comercial próprio usa meta zerada
+    # (aparece como "Sem plano" no front, igual outros níveis sem meta).
+    tag_ids_reais = [k for k in tags_tree.keys() if k != SEM_TAG_KEY]
+    tag_names = resolve_tag_names(tag_ids_reais)
+    tags_out = []
+    for key, bucket in tags_tree.items():
+        round_bucket_revenue(bucket)
+        nome_tag = "(sem tag)" if key == SEM_TAG_KEY else tag_names.get(key, f"Tag #{key}")
+        tags_out.append({"tag": nome_tag, "meta": metas.empty_meta(), "pdu": None, **bucket})
+    tags_out.sort(key=lambda x: -x["revenue"]["RECEITA TOTAL"]["receita"])
+
     root_meta = metas.sum_metas(*[pv["meta"] for pv in hierarchy])
     return {
         "label": label,
@@ -341,6 +394,7 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
         "team_ranking": team_ranking,
         "top_consultores": top_consultores,
         "hierarchy": hierarchy,
+        "tags": tags_out,
         "leads_fora_do_escopo": leads_fora_do_escopo,
         "pedidos_mes_atual_count": pedidos_mes_atual_count,
     }

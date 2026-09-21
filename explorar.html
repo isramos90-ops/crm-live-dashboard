@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel CRM — Consulta por PV / Supervisor / Consultor</title>
+<style>
+  :root {
+    --brand-purple: #660099; --brand-purple-dark: #3d005c; --brand-magenta: #ec008c;
+    --surface-1: #ffffff; --page-plane: #f3eef7; --text-primary: #17131a;
+    --text-secondary: #55505c; --text-muted: #8d8792; --gridline: #e4dfe9; --border: rgba(20,10,25,0.10);
+    --good: #1fa34a; --warn: #f1c40f; --bad: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  header {
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%);
+    color: #fff;
+  }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; overflow: hidden; flex-shrink: 0; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .who h1 { font-size: 18px; margin: 0; }
+  .who .sub { font-size: 12px; color: rgba(255,255,255,0.8); }
+  .brand-logo { background: #fff; border-radius: 8px; padding: 5px 10px; display: flex; align-items: center; }
+  .brand-logo img { height: 24px; display: block; }
+  .status { text-align: right; font-size: 11px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4be36a; margin-right: 5px; box-shadow: 0 0 0 0 rgba(75,227,106,0.6); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(75,227,106,0.6);} 70% { box-shadow: 0 0 0 6px rgba(75,227,106,0);} 100% { box-shadow: 0 0 0 0 rgba(75,227,106,0);} }
+
+  .filtros {
+    padding: 14px 28px; display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--surface-1); border-bottom: 1px solid var(--border);
+  }
+  .campo { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+  .campo label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .campo select {
+    font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; color: var(--text-primary); font-family: inherit;
+  }
+  .campo select:disabled { color: var(--text-muted); background: #f7f5f8; }
+
+  main { padding: 18px 24px 26px; display: grid; grid-template-columns: 1.1fr 1.3fr 0.9fr; gap: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  .meta-principal .pct { font-size: 44px; font-weight: 700; line-height: 1; }
+  .meta-principal .pct.good { color: var(--good); } .meta-principal .pct.warn { color: #b8860b; } .meta-principal .pct.bad { color: var(--bad); }
+  .meta-principal .tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--brand-purple); background: #f2e3fa; padding: 3px 8px; border-radius: 20px; margin-bottom: 8px; }
+  .meter { position: relative; height: 12px; border-radius: 6px; margin: 14px 0 10px;
+    background: linear-gradient(90deg, var(--bad) 0%, var(--bad) 60%, var(--warn) 60%, var(--warn) 85%, var(--good) 85%, var(--good) 100%); }
+  .meter .marker { position: absolute; top: -4px; width: 4px; height: 20px; border-radius: 2px; background: #17131a; }
+  .meta-rows { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .meta-rows b { display: block; font-size: 14px; color: var(--text-primary); }
+  .meta-rows b.falta { color: var(--bad); }
+
+  .status-chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .status-chip {
+    display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-secondary);
+    background: #f7f5f8; border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px 6px 10px;
+  }
+  .status-chip b { font-size: 13px; color: var(--text-primary); font-weight: 700; }
+  .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-chip.concluido .dot { background: var(--good); }
+  .status-chip.tramite .dot { background: var(--warn); }
+
+  .pdu-card .pdu-main { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-top: 6px; }
+  .pdu-card .pdu-destaque { min-width: 150px; }
+  .pdu-card .pdu-destaque .lbl { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pdu-card .pdu-destaque .valor { font-size: 34px; font-weight: 700; color: var(--brand-purple); line-height: 1; }
+  .pdu-card .pdu-destaque .valor.falta { color: var(--bad); }
+  .pdu-card .pdu-secundario {
+    display: flex; gap: 28px; flex-wrap: wrap; flex: 1;
+    padding-left: 24px; border-left: 1px solid var(--gridline); min-width: 260px;
+  }
+  .pdu-card .pdu-secundario div { display: flex; flex-direction: column; gap: 3px; }
+  .pdu-card .pdu-secundario span { font-size: 11px; color: var(--text-secondary); }
+  .pdu-card .pdu-secundario b { font-size: 15px; color: var(--text-primary); }
+
+  .produto-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
+  .produto-tile { text-align: center; }
+  .produto-tile .nome { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .produto-tile .pct { font-size: 22px; font-weight: 700; }
+  .produto-tile .meter { height: 8px; margin: 8px 0 6px; }
+  .produto-tile .meter .marker { height: 14px; top: -3px; width: 3px; }
+  .produto-tile .nums { font-size: 11px; color: var(--text-muted); }
+
+  .mini-gauge { display: flex; align-items: center; gap: 14px; }
+  .mini-gauge .pct { font-size: 30px; font-weight: 700; min-width: 68px; }
+  .mini-gauge .info { flex: 1; }
+  .mini-gauge .meter { margin: 6px 0; }
+  .mini-gauge .nums { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
+
+  .funil-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .funil-box { border-radius: 10px; padding: 12px 14px; color: #fff; }
+  .funil-box .n { font-size: 22px; font-weight: 700; }
+  .funil-box .lbl { font-size: 11px; opacity: 0.9; }
+  .funil-box.proposta { background: var(--brand-purple); }
+  .funil-box.aceite { background: var(--good); }
+  .funil-box.recusada { background: var(--bad); }
+  .funil-box.finalizado { background: var(--brand-magenta); }
+  .funil-note { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+
+  .ranking-podium { display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; padding: 4px 0; gap: 10px; }
+  .ranking-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .ranking-photo { position: relative; }
+  .ranking-photo .circle {
+    border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff; background: var(--brand-purple);
+  }
+  .ranking-photo .circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ranking-photo .medal-badge {
+    position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+  }
+  .rank-1 .circle { width: 92px; height: 92px; font-size: 30px; border: 4px solid #FFD700; }
+  .rank-2 .circle { width: 76px; height: 76px; font-size: 24px; border: 4px solid #C0C0C0; }
+  .rank-3 .circle { width: 68px; height: 68px; font-size: 22px; border: 4px solid #CD7F32; }
+  .ranking-card .nome { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .ranking-card .pct { font-size: 17px; font-weight: 800; color: var(--brand-purple); }
+
+  footer { padding: 10px 24px 18px; text-align: center; font-size: 11px; color: var(--text-muted); }
+  .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="who">
+    <div class="avatar" id="hd-initials">–</div>
+    <div>
+      <h1 id="hd-nome">Carregando…</h1>
+      <div class="sub" id="hd-cargo"></div>
+    </div>
+  </div>
+  <div class="brand-logo"><img src="{{ url_for('static', filename='logo-grupo-global.png') }}" alt="Grupo Global"></div>
+  <div class="status">
+    <div><span class="live-dot"></span>Atualizando automaticamente</div>
+    <div id="hd-updated"></div>
+    <div>Desenvolvido por Isabela Ramos</div>
+  </div>
+</header>
+
+<div class="filtros">
+  <div class="campo">
+    <label for="sel-pv">PV</label>
+    <select id="sel-pv"></select>
+  </div>
+  <div class="campo">
+    <label for="sel-sup">Supervisor</label>
+    <select id="sel-sup"></select>
+  </div>
+  <div class="campo">
+    <label for="sel-cons">Consultor</label>
+    <select id="sel-cons"></select>
+  </div>
+  <div class="campo">
+    <label for="sel-tag">Tag / Marcador</label>
+    <select id="sel-tag"></select>
+  </div>
+</div>
+
+<main id="main">
+  <div class="no-data" style="grid-column: span 3;">Carregando dados…</div>
+</main>
+
+<footer>Painel CRM · Vivo Empresas · Grupo Global — consulta manual, atualiza os dados sozinho a cada {{ refresh_seconds }}s</footer>
+
+<script>
+const REFRESH_MS = {{ refresh_seconds * 1000 }};
+// {PRIMEIRO_NOME_NORMALIZADO: "fotos/arquivo.jpg"} — casa foto pelo primeiro
+// nome, funciona pra consultor ou supervisor (ver fotos.py).
+const FOTOS = {{ fotos_map | tojson }};
+const STATIC_BASE = "{{ url_for('static', filename='') }}";
+const VALOR_TODOS = "__TODOS__";
+
+function fmtBRL(v) { return (v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL', maximumFractionDigits:0}); }
+function fmtNum(v) { return (v || 0).toLocaleString('pt-BR'); }
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return 'Última atualização ' + d.toLocaleString('pt-BR', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+}
+function pct(realizado, meta) { return meta > 0 ? (100 * realizado / meta) : null; }
+function pctClass(p) { return p === null ? '' : (p >= 85 ? 'good' : (p >= 60 ? 'warn' : 'bad')); }
+function pctLabel(p) { return p === null ? 'Sem plano' : p.toFixed(0) + '%'; }
+const MEDALS = ['🥇', '🥈', '🥉'];
+function clampPct(p) { return p === null ? 0 : Math.max(0, Math.min(100, p)); }
+function ratio(n, d) { return d > 0 ? (100 * n / d) : 0; }
+function initials(nome) {
+  const parts = (nome || '').trim().split(/\s+/);
+  return ((parts[0]||'')[0] || '') + ((parts[1]||'')[0] || '');
+}
+function firstNameKey(nome) {
+  const first = (nome || '').trim().split(/\s+/)[0] || '';
+  return first.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
+}
+function fotoFor(nome) {
+  const path = FOTOS[firstNameKey(nome)];
+  return path ? (STATIC_BASE + path) : null;
+}
+
+// Fotos "especiais" pra níveis que não são uma pessoa (PV e equipe), pedido
+// da Isabela em 2026-09-16: na visão geral do PV 02, mostrar a foto do
+// Flávio (proprietário). Usa um arquivo com nome próprio (não "flavio.jpg")
+// pra não colidir com o casamento por primeiro nome do fotoFor() — existe
+// um consultor real chamado Flavio (ex: "Flavio Manoel", PV03) que não pode
+// herdar a foto do dono por engano.
+//
+// Nível "equipe" (2026-09-17, corrigido a pedido da Isabela): a maioria das
+// equipes leva o nome de quem é o supervisor/dono dela (ex: "EQUIPE
+// ALEXANDRE" -> Alexandre Ornellas, "EQUIPE RICHARD" -> Richard Oliveira de
+// Souza), então a foto é buscada normalmente pelo primeiro nome via
+// fotoFor() usando o sufixo da equipe (o que vem depois de "EQUIPE "). A
+// exceção é "EQUIPE CARTEIRA" do PV 02: não existe ninguém chamado
+// "Carteira", então mostra a foto da própria Isabela, que é a supervisora
+// real dessa equipe.
+function specialFoto(label, keyType, pv) {
+  if (keyType === 'pv' && label === 'PV 02') return STATIC_BASE + 'fotos/flavio-dono-pv02.jpg';
+  if (keyType === 'supervisor') {
+    if (pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
+    const suffix = label.replace(/^EQUIPE\s+/i, '');
+    return fotoFor(suffix);
+  }
+  return null;
+}
+
+let LAST_DATA = null;
+
+// Seleção atual do usuário — persiste entre atualizações automáticas dos
+// dados, contanto que o PV/Supervisor/Consultor escolhido ainda exista.
+let SEL_PV = null;
+let SEL_SUP = VALOR_TODOS;   // VALOR_TODOS = "visão geral do PV"
+let SEL_CONS = VALOR_TODOS;  // VALOR_TODOS = "visão geral do supervisor"
+let SEL_TAG = VALOR_TODOS;   // VALOR_TODOS = "ver por PV/Supervisor/Consultor" (ignora tag)
+
+async function fetchData() {
+  try {
+    const res = await fetch('/api/data');
+    const state = await res.json();
+    document.getElementById('hd-updated').textContent = fmtTime(state.updated_at);
+    if (state.data) {
+      LAST_DATA = state.data;
+      rebuildSelectsAndRender();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function populateSelect(sel, options, currentValue) {
+  const prev = sel.value;
+  sel.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  const wanted = currentValue !== undefined ? currentValue : prev;
+  if (wanted && options.some(o => o.value === wanted)) {
+    sel.value = wanted;
+  } else {
+    sel.value = options.length ? options[0].value : '';
+  }
+  return sel.value;
+}
+
+function rebuildSelectsAndRender() {
+  const period = LAST_DATA.periods.month;
+  const hierarchy = period.hierarchy || [];
+  if (!hierarchy.length) {
+    document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Nenhum dado disponível ainda.</div>';
+    return;
+  }
+
+  const selPvEl = document.getElementById('sel-pv');
+  const selSupEl = document.getElementById('sel-sup');
+  const selConsEl = document.getElementById('sel-cons');
+  const selTagEl = document.getElementById('sel-tag');
+
+  const pvOptions = hierarchy.map(p => ({ value: p.pv, label: p.pv }));
+  SEL_PV = populateSelect(selPvEl, pvOptions, SEL_PV || hierarchy[0].pv);
+
+  const pvNode = hierarchy.find(p => p.pv === SEL_PV) || hierarchy[0];
+
+  const supOptions = [{ value: VALOR_TODOS, label: '— Visão geral do PV —' }]
+    .concat(pvNode.supervisors.map(s => ({ value: s.supervisor, label: s.supervisor })));
+  SEL_SUP = populateSelect(selSupEl, supOptions, SEL_SUP);
+
+  let consOptions = [{ value: VALOR_TODOS, label: '— Visão geral do supervisor —' }];
+  let supNode = null;
+  if (SEL_SUP !== VALOR_TODOS) {
+    supNode = pvNode.supervisors.find(s => s.supervisor === SEL_SUP);
+    if (supNode) {
+      consOptions = consOptions.concat(supNode.consultores.map(c => ({ value: c.nome, label: c.nome })));
+    }
+    selConsEl.disabled = false;
+  } else {
+    selConsEl.disabled = true;
+  }
+  SEL_CONS = populateSelect(selConsEl, consOptions, SEL_CONS);
+
+  // Tag/Marcador (pedido da Isabela em 2026-09-21): eixo à parte da
+  // hierarquia PV/Supervisor/Consultor — ao escolher uma tag específica,
+  // o painel mostra o resultado agregado daquela tag (todos os PVs juntos)
+  // em vez do PV/Supervisor/Consultor selecionado.
+  const tags = period.tags || [];
+  const tagOptions = [{ value: VALOR_TODOS, label: '— Todas (ver por PV/Supervisor/Consultor) —' }]
+    .concat(tags.map(t => ({ value: t.tag, label: t.tag })));
+  SEL_TAG = populateSelect(selTagEl, tagOptions, SEL_TAG);
+  selPvEl.disabled = selSupEl.disabled = (SEL_TAG !== VALOR_TODOS);
+  if (SEL_TAG !== VALOR_TODOS) selConsEl.disabled = true;
+
+  if (SEL_TAG !== VALOR_TODOS) {
+    const tagNode = tags.find(t => t.tag === SEL_TAG);
+    if (tagNode) {
+      renderCore(tagNode, tagNode.tag, 'Tag / Marcador do CRM', null, tags, 'tag', false);
+      return;
+    }
+  }
+
+  render(pvNode, supNode);
+}
+
+function meterHtml(p, extraClass) {
+  return `<div class="meter ${extraClass||''}"><div class="marker" style="left: calc(${clampPct(p).toFixed(1)}% - 2px)"></div></div>`;
+}
+
+function render(pvNode, supNode) {
+  let node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa;
+
+  if (SEL_SUP === VALOR_TODOS || !supNode) {
+    node = pvNode;
+    nivelLabel = pvNode.pv;
+    subLabel = 'Visão geral do PV';
+    // PV 02: mostra a foto do Flávio (proprietário) — pedido da Isabela em
+    // 2026-09-16. Outros PVs continuam sem foto (avatar "PV").
+    foto = specialFoto(pvNode.pv, 'pv', pvNode.pv);
+    peers = LAST_DATA.periods.month.hierarchy;
+    peerNameKey = 'pv';
+    isPessoa = !!foto;
+  } else if (SEL_CONS === VALOR_TODOS) {
+    // supNode.supervisor agora é o nome da EQUIPE (ex: "EQUIPE CARTEIRA"),
+    // não uma pessoa — mostra o resultado da equipe nesse nível. Exceção
+    // (pedido da Isabela em 2026-09-16): a Equipe Carteira do PV 02, onde
+    // ela mesma é a supervisora, mostra a foto dela; as demais equipes
+    // continuam com o avatar "EQ".
+    node = supNode;
+    nivelLabel = supNode.supervisor;
+    subLabel = 'PV: ' + pvNode.pv + ' · Visão geral da equipe';
+    foto = specialFoto(supNode.supervisor, 'supervisor', pvNode.pv);
+    peers = pvNode.supervisors;
+    peerNameKey = 'supervisor';
+    isPessoa = !!foto;
+  } else {
+    const consNode = supNode.consultores.find(c => c.nome === SEL_CONS);
+    if (!consNode) {
+      document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Consultor não encontrado nesta atualização.</div>';
+      return;
+    }
+    node = consNode;
+    nivelLabel = consNode.nome;
+    subLabel = 'PV: ' + pvNode.pv + ' · ' + supNode.supervisor;
+    foto = fotoFor(consNode.nome);
+    peers = supNode.consultores;
+    peerNameKey = 'nome';
+    isPessoa = true;
+  }
+
+  renderCore(node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa, (SEL_SUP === VALOR_TODOS || !supNode) ? 'PV' : 'EQ', pvNode.pv);
+}
+
+function renderCore(node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa, fallbackAvatarText, pvLabelForRanking) {
+  document.getElementById('hd-nome').textContent = nivelLabel;
+  document.getElementById('hd-cargo').textContent = subLabel;
+  const avatarEl = document.getElementById('hd-initials');
+  if (isPessoa && foto) {
+    avatarEl.innerHTML = `<img src="${foto}" alt="${nivelLabel}">`;
+  } else if (isPessoa) {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = initials(nivelLabel).toUpperCase();
+  } else {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = fallbackAvatarText || (peerNameKey === 'tag' ? '#' : '');
+  }
+
+  const realizadoTotal = node.revenue['RECEITA TOTAL'].receita;
+  const metaTotal = node.meta.RECEITA_TOTAL;
+  const pTotal = pct(realizadoTotal, metaTotal);
+  const falta = Math.max(0, metaTotal - realizadoTotal);
+
+  const produtos = [
+    { nome: 'Receita Total', realizado: realizadoTotal, meta: metaTotal, money: true },
+    { nome: 'Renovação', realizado: node.revenue['RENOVAÇÃO'].receita, meta: node.meta.RECEITA_RENOVACAO, money: true },
+    { nome: 'Aparelhos', realizado: node.revenue['APARELHO'].receita, meta: node.meta.RECEITA_APARELHOS, money: true },
+    { nome: 'Banda Larga', realizado: node.revenue['BANDA LARGA'].qtd, meta: node.meta.QUANTIDADE_BL, money: false },
+  ];
+
+  const mailingPct = ratio(node.atendido, node.total);
+
+  const rankingHtml = peers
+    .map(p => ({ nome: p[peerNameKey], p: pct(p.revenue['RECEITA TOTAL'].receita, p.meta.RECEITA_TOTAL) }))
+    .filter(p => p.p !== null)
+    .sort((a, b) => b.p - a.p)
+    .slice(0, 3)
+    .map((s, i) => {
+      const foto = (peerNameKey === 'tag') ? null : (specialFoto(s.nome, peerNameKey, pvLabelForRanking) || fotoFor(s.nome));
+      const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
+      return `<div class="ranking-card rank-${i+1}">
+        <div class="ranking-photo">
+          <div class="circle">${fotoHtml}</div>
+          <div class="medal-badge">${MEDALS[i]}</div>
+        </div>
+        <div class="nome">${s.nome}</div>
+        <div class="pct">${pctLabel(s.p)}</div>
+      </div>`;
+    }).join('') || '<div class="funil-note">Ninguém com plano comercial cadastrado ainda.</div>';
+
+  const coberturaPct = ratio(node.aceite_enviado, node.total);
+
+  document.getElementById('main').innerHTML = `
+    <div class="card meta-principal">
+      <span class="tag">★ Indicador principal</span>
+      <h2>Plano Comercial x Realizado (Receita Total)</h2>
+      <div class="pct ${pctClass(pTotal)}">${pctLabel(pTotal)}</div>
+      ${meterHtml(pTotal)}
+      <div class="meta-rows">
+        <div>Plano Comercial<b>${metaTotal > 0 ? fmtBRL(metaTotal) : '—'}</b></div>
+        <div>Realizado<b>${fmtBRL(realizadoTotal)}</b></div>
+        <div>Falta bater<b class="falta">${metaTotal > 0 ? fmtBRL(falta) : '—'}</b></div>
+      </div>
+      <div class="status-chips">
+        <span class="status-chip concluido"><span class="dot"></span>Concluída <b>${fmtBRL(node.receita_total_status.concluido)}</b></span>
+        <span class="status-chip tramite"><span class="dot"></span>Em Trâmite <b>${fmtBRL(node.receita_total_status.em_tramite)}</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Plano Comercial por produto</h2>
+      <div class="produto-grid">
+        ${produtos.map(p => {
+          const pp = pct(p.realizado, p.meta);
+          return `<div class="produto-tile">
+            <div class="nome">${p.nome}</div>
+            <div class="pct ${pctClass(pp)}">${pctLabel(pp)}</div>
+            ${meterHtml(pp)}
+            <div class="nums">${p.money ? fmtBRL(p.meta) : fmtNum(p.meta)} plano · ${p.money ? fmtBRL(p.realizado) : fmtNum(p.realizado)} real.</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <h2 style="margin-top:18px">CRM · Atendimentos</h2>
+      <div class="mini-gauge">
+        <div class="pct ${pctClass(mailingPct)}">${mailingPct.toFixed(0)}%</div>
+        <div class="info">
+          ${meterHtml(mailingPct)}
+          <div class="nums"><span>${fmtNum(node.atendido)} atendidos</span><span>${fmtNum(node.total)} leads no mês</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-row: span 2;">
+      <h2>Plano Comercial x Realizado — Top 3</h2>
+      <div class="ranking-podium">${rankingHtml}</div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Funil de vendas (mês)</h2>
+      <div class="funil-grid">
+        <div class="funil-box proposta"><div class="n">${fmtNum(node.proposta_enviada)}</div><div class="lbl">Proposta enviada</div></div>
+        <div class="funil-box aceite"><div class="n">${fmtNum(node.aceite_enviado)}</div><div class="lbl">Aceite enviado</div></div>
+        <div class="funil-box recusada"><div class="n">${fmtNum(node.proposta_recusada)}</div><div class="lbl">Proposta recusada</div></div>
+        <div class="funil-box finalizado"><div class="n">${fmtNum(node.concluido)}</div><div class="lbl">Finalizado</div></div>
+      </div>
+      <div class="funil-note">Cobertura de carteira: ${fmtNum(node.aceite_enviado)} fechados de ${fmtNum(node.total)} leads (${coberturaPct.toFixed(1)}%) · ${fmtNum(node.atendido)} atendidos no total.</div>
+    </div>
+
+    ${pduHtml(node.pdu, LAST_DATA.periods.month.dias_uteis)}
+  `;
+}
+
+// PDU (Produção por Dia Útil, pedido da Isabela em 2026-09-17): plano
+// comercial (Receita Total) dividido pelos dias úteis do mês; conforme os
+// dias passam, o que falta bater é redividido pelos dias úteis que ainda
+// restam, então esse número sobe ou desce de acordo com o ritmo real.
+function pduHtml(pdu, dias) {
+  if (!pdu || !dias) return '';
+  return `<div class="card pdu-card" style="grid-column: span 3;">
+    <span class="tag">📅 PDU — Produção por Dia Útil</span>
+    <h2>Ritmo necessário por dia útil (Receita Total)</h2>
+    <div class="pdu-main">
+      <div class="pdu-destaque">
+        <div class="lbl">PDU necessário agora</div>
+        <div class="valor ${pdu.falta > 0 ? 'falta' : ''}">${fmtBRL(pdu.pdu_necessario)}</div>
+      </div>
+      <div class="pdu-secundario">
+        <div><span>PDU inicial (plano ÷ dias úteis)</span><b>${pdu.pdu_inicial != null ? fmtBRL(pdu.pdu_inicial) : '—'}</b></div>
+        <div><span>Falta bater no mês</span><b>${fmtBRL(pdu.falta)}</b></div>
+        <div><span>Dias úteis restantes</span><b>${dias.dias_uteis_restantes} de ${dias.dias_uteis_totais}</b></div>
+      </div>
+    </div>
+    <div class="funil-note">
+      Mês: ${dias.inicio.split('-').reverse().join('/')} a ${dias.fim.split('-').reverse().join('/')} ·
+      ${dias.dias_uteis_decorridos} de ${dias.dias_uteis_totais} dias úteis já passaram ·
+      faltam ${dias.dias_uteis_restantes} dias úteis.
+    </div>
+  </div>`;
+}
+
+document.getElementById('sel-pv').addEventListener('change', (e) => {
+  SEL_PV = e.target.value; SEL_SUP = VALOR_TODOS; SEL_CONS = VALOR_TODOS;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-sup').addEventListener('change', (e) => {
+  SEL_SUP = e.target.value; SEL_CONS = VALOR_TODOS;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-cons').addEventListener('change', (e) => {
+  SEL_CONS = e.target.value;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-tag').addEventListener('change', (e) => {
+  SEL_TAG = e.target.value;
+  rebuildSelectsAndRender();
+});
+
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+</body>
+</html>
