@@ -169,6 +169,22 @@ function fotoFor(nome) {
   return path ? (STATIC_BASE + path) : null;
 }
 
+// Fotos "especiais" pra níveis que não são uma pessoa (PV e equipe), mesma
+// lógica do Explorar: no PV 02, mostra a foto do Flávio (proprietário); na
+// Equipe Carteira do PV 02, mostra a foto da Isabela (é ela a supervisora
+// real dessa equipe); as demais equipes usam a foto de quem dá nome a elas
+// (ex: "EQUIPE RICHARD" -> Richard, "EQUIPE ALEXANDRE" -> Alexandre),
+// buscada pelo primeiro nome via fotoFor().
+function specialFoto(label, keyType, pv) {
+  if (keyType === 'pv' && label === 'PV 02') return STATIC_BASE + 'fotos/flavio-dono-pv02.jpg';
+  if (keyType === 'supervisor') {
+    if (pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
+    const suffix = label.replace(/^EQUIPE\s+/i, '');
+    return fotoFor(suffix);
+  }
+  return null;
+}
+
 let LAST_DATA = null;
 let SLIDES = [];
 let SLIDE_IDX = 0;
@@ -191,20 +207,50 @@ async function fetchData() {
 // PV exibido (ou remover o filtro), edite essa constante.
 const TV_PV_FILTRO = "PV 02";
 
+// Ordem das telas (pedido da Isabela em 2026-09-24): primeiro a visão geral
+// do PV (foto do Flávio), depois cada Supervisor/Equipe (Carteira -> foto da
+// Isabela, Richard e Alexandre -> contando eles mesmos, com o plano
+// comercial de cada equipe), e só depois os consultores individualmente
+// (esses continuam ordenados do que está mais perto de bater a meta pro que
+// está mais longe).
 function rebuildSlides() {
   const period = LAST_DATA.periods.month;
-  const slides = [];
+  const pvSlides = [];
+  const supSlides = [];
+  const consultorSlides = [];
+
   for (const pv of period.hierarchy) {
     if (TV_PV_FILTRO && pv.pv !== TV_PV_FILTRO) continue;
+
+    const pvFoto = specialFoto(pv.pv, 'pv', pv.pv);
+    pvSlides.push({
+      node: pv, nivelLabel: pv.pv, subLabel: 'Visão geral do PV',
+      foto: pvFoto, isPessoa: !!pvFoto, fallbackAvatarText: 'PV',
+      peers: period.hierarchy, peerNameKey: 'pv', pvLabelForRanking: pv.pv,
+    });
+
     for (const sup of pv.supervisors) {
+      const supFoto = specialFoto(sup.supervisor, 'supervisor', pv.pv);
+      supSlides.push({
+        node: sup, nivelLabel: sup.supervisor, subLabel: 'PV: ' + pv.pv + ' · Visão geral da equipe',
+        foto: supFoto, isPessoa: !!supFoto, fallbackAvatarText: 'EQ',
+        peers: pv.supervisors, peerNameKey: 'supervisor', pvLabelForRanking: pv.pv,
+      });
+
       for (const c of sup.consultores) {
-        slides.push({ ...c, pv: pv.pv, supervisor: sup.supervisor });
+        consultorSlides.push({
+          node: c, nivelLabel: c.nome, subLabel: 'PV: ' + pv.pv + ' · ' + sup.supervisor,
+          foto: fotoFor(c.nome), isPessoa: true, fallbackAvatarText: '',
+          peers: sup.consultores, peerNameKey: 'nome', pvLabelForRanking: pv.pv,
+        });
       }
     }
   }
-  const sortPct = (s) => { const p = pct(s.revenue['RECEITA TOTAL'].receita, s.meta.RECEITA_TOTAL); return p === null ? -1 : p; };
-  slides.sort((a, b) => sortPct(b) - sortPct(a));
-  SLIDES = slides;
+
+  const sortPct = (s) => { const p = pct(s.node.revenue['RECEITA TOTAL'].receita, s.node.meta.RECEITA_TOTAL); return p === null ? -1 : p; };
+  consultorSlides.sort((a, b) => sortPct(b) - sortPct(a));
+
+  SLIDES = [...pvSlides, ...supSlides, ...consultorSlides];
   if (SLIDE_IDX >= SLIDES.length) SLIDE_IDX = 0;
   renderSlide();
 }
@@ -215,18 +261,22 @@ function meterHtml(p, extraClass) {
 
 function renderSlide() {
   if (!SLIDES.length) {
-    document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Nenhum consultor com plano comercial cadastrado em config/metas.xlsx ainda.</div>';
+    document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Nenhum dado com plano comercial cadastrado em config/metas.xlsx ainda.</div>';
     return;
   }
-  const c = SLIDES[SLIDE_IDX];
-  document.getElementById('hd-nome').textContent = c.nome;
-  document.getElementById('hd-cargo').textContent = 'PV: ' + c.pv + ' · ' + c.supervisor;
+  const slide = SLIDES[SLIDE_IDX];
+  const c = slide.node;
+  document.getElementById('hd-nome').textContent = slide.nivelLabel;
+  document.getElementById('hd-cargo').textContent = slide.subLabel;
   const avatarEl = document.getElementById('hd-initials');
-  const foto = fotoFor(c.nome);
-  if (foto) {
-    avatarEl.innerHTML = `<img src="${foto}" alt="${c.nome}">`;
+  if (slide.isPessoa && slide.foto) {
+    avatarEl.innerHTML = `<img src="${slide.foto}" alt="${slide.nivelLabel}">`;
+  } else if (slide.isPessoa) {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = initials(slide.nivelLabel).toUpperCase();
   } else {
-    avatarEl.textContent = initials(c.nome).toUpperCase();
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = slide.fallbackAvatarText || '';
   }
 
   const realizadoTotal = c.revenue['RECEITA TOTAL'].receita;
@@ -244,19 +294,23 @@ function renderSlide() {
   const mailingPct = ratio(c.atendido, c.total);
   const coberturaPct = ratio(c.aceite_enviado, c.total);
 
-  const rankingHtml = SLIDES.filter(s => pct(s.revenue['RECEITA TOTAL'].receita, s.meta.RECEITA_TOTAL) !== null).slice(0, 3).map((s, i) => {
-    const p = pct(s.revenue['RECEITA TOTAL'].receita, s.meta.RECEITA_TOTAL);
-    const foto = fotoFor(s.nome);
-    const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
-    return `<div class="ranking-card rank-${i+1}">
-      <div class="ranking-photo">
-        <div class="circle">${fotoHtml}</div>
-        <div class="medal-badge">${MEDALS[i]}</div>
-      </div>
-      <div class="nome">${s.nome}</div>
-      <div class="pct">${pctLabel(p)}</div>
-    </div>`;
-  }).join('') || '<div class="funil-note">Ninguém com plano comercial cadastrado ainda.</div>';
+  const rankingHtml = slide.peers
+    .map(p => ({ nome: p[slide.peerNameKey], p: pct(p.revenue['RECEITA TOTAL'].receita, p.meta.RECEITA_TOTAL) }))
+    .filter(p => p.p !== null)
+    .sort((a, b) => b.p - a.p)
+    .slice(0, 3)
+    .map((s, i) => {
+      const foto = specialFoto(s.nome, slide.peerNameKey, slide.pvLabelForRanking) || fotoFor(s.nome);
+      const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
+      return `<div class="ranking-card rank-${i+1}">
+        <div class="ranking-photo">
+          <div class="circle">${fotoHtml}</div>
+          <div class="medal-badge">${MEDALS[i]}</div>
+        </div>
+        <div class="nome">${s.nome}</div>
+        <div class="pct">${pctLabel(s.p)}</div>
+      </div>`;
+    }).join('') || '<div class="funil-note">Ninguém com plano comercial cadastrado ainda.</div>';
 
   document.getElementById('main').innerHTML = `
     <div class="card meta-principal">
