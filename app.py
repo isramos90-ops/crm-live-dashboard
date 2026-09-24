@@ -27,7 +27,7 @@ from flask import Flask, jsonify, render_template, request
 import odoo_client as crm
 import metas
 import fotos
-from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
+from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES, norm as norm_tag
 import dias_uteis
 import hierarchy as hierarchy_mod
 from hierarchy import build_user_id_map
@@ -69,6 +69,32 @@ def _load_pedidos_mes_atual():
 
 
 PEDIDOS_MES_ATUAL = _load_pedidos_mes_atual()
+
+
+def _load_tags_principais():
+    """Lista das tags/marcadores 'oficiais' do mês (config/tags_principais.txt,
+    um por linha) — todo mês a Isabela sobe um novo lote de marcadores no CRM
+    com o mês/ano no nome (ex: '#RENOVAÇÃOMOVELSETEMBRO2026'), então esse
+    arquivo precisa ser atualizado mensalmente com a lista nova (mesma lógica
+    de config/pedidos_mes_atual.txt). Comparação ignora acento/caixa e o "#"
+    na frente, pra não depender de digitação exata. Se o arquivo não existir
+    ou estiver vazio, o filtro fica desligado (mostra todas as tags com
+    pedido) em vez de esconder tudo por engano."""
+    path = os.path.join(BASE_DIR, "config", "tags_principais.txt")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return {norm_tag(line.lstrip("#")) for line in f if line.strip()}
+    except FileNotFoundError:
+        return set()
+
+
+TAGS_PRINCIPAIS = _load_tags_principais()
+
+
+def is_tag_principal(tag_name):
+    if not TAGS_PRINCIPAIS:
+        return True
+    return norm_tag(tag_name.lstrip("#")) in TAGS_PRINCIPAIS
 
 _state_lock = threading.Lock()
 _state = {"data": None, "updated_at": None, "error": None}
@@ -380,7 +406,21 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
     tags_out = []
     for key, bucket in tags_tree.items():
         round_bucket_revenue(bucket)
+        # Só entra na lista se tiver pelo menos um pedido/linha batendo em
+        # alguma categoria de receita (RECEITA TOTAL/RENOVAÇÃO/BANDA
+        # LARGA/APARELHO) — filtra tags que só existem como marcador de lead,
+        # sem venda associada (pedido da Isabela em 2026-09-21: "limpar as
+        # tags e deixar somente as que tenha pedidos").
+        tem_pedidos = any(v["qtd"] > 0 for v in bucket["revenue"].values())
+        if not tem_pedidos:
+            continue
         nome_tag = "(sem tag)" if key == SEM_TAG_KEY else tag_names.get(key, f"Tag #{key}")
+        # Só mostra as tags "principais" do mês (config/tags_principais.txt),
+        # pedido da Isabela em 2026-09-24 — some com todo o resto do CRM
+        # (marcadores internos, de backoffice, etc.) que não fazem parte do
+        # lote oficial que ela sobe todo mês.
+        if not is_tag_principal(nome_tag):
+            continue
         tags_out.append({"tag": nome_tag, "meta": metas.empty_meta(), "pdu": None, **bucket})
     tags_out.sort(key=lambda x: -x["revenue"]["RECEITA TOTAL"]["receita"])
 
