@@ -22,11 +22,18 @@ import os
 import threading
 import time
 
+try:
+    from zoneinfo import ZoneInfo
+    TZ_BRASIL = ZoneInfo("America/Sao_Paulo")
+except Exception:  # pragma: no cover — fallback se tzdata não estiver disponível
+    TZ_BRASIL = None
+
 from flask import Flask, jsonify, render_template, request
 
 import odoo_client as crm
 import metas
 import fotos
+import poster_generator
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
 import dias_uteis
 import hierarchy as hierarchy_mod
@@ -379,6 +386,43 @@ def collect_data():
     }
 
 
+POSTERS_DIR = os.path.join(BASE_DIR, "static", "rankings")
+
+
+def _dentro_do_horario_permitido_para_posters(now=None):
+    """Isabela (2026-09-25): os pôsteres de ranking (Explorar/TV) só devem
+    ser atualizados seg-sex 07h-19h e sáb 07h-12h, horário de Brasília —
+    fora disso (noite, domingo) a última versão gerada fica parada."""
+    if now is None:
+        now = dt.datetime.now(TZ_BRASIL) if TZ_BRASIL else dt.datetime.now()
+    weekday = now.weekday()  # 0=segunda ... 6=domingo
+    hour = now.hour + now.minute / 60
+    if weekday <= 4:  # segunda a sexta
+        return 7 <= hour < 19
+    if weekday == 5:  # sábado
+        return 7 <= hour < 12
+    return False  # domingo
+
+
+def _atualizar_posters_ranking(data):
+    # Bootstrap: se ainda não existe nenhum pôster gerado (primeiro deploy,
+    # ou reinício fora do horário permitido), gera uma vez mesmo fora da
+    # janela, pra Explorar/TV não ficarem sem imagem — as atualizações
+    # seguintes voltam a respeitar o horário normalmente.
+    already_has_posters = os.path.isdir(POSTERS_DIR) and any(
+        f.endswith(".png") for f in os.listdir(POSTERS_DIR)
+    )
+    if already_has_posters and not _dentro_do_horario_permitido_para_posters():
+        log.info("Fora do horário permitido (seg-sex 07-19h, sáb 07-12h) — pôsteres de ranking não atualizados desta vez.")
+        return
+    try:
+        hierarchy = data["periods"]["month"]["hierarchy"]
+        gerados = poster_generator.build_all(hierarchy, POSTERS_DIR)
+        log.info("Pôsteres de ranking atualizados: %s", gerados)
+    except Exception:  # noqa: BLE001
+        log.exception("Falha ao gerar os pôsteres de ranking (dados seguem atualizados normalmente)")
+
+
 def refresh_loop():
     while True:
         try:
@@ -388,6 +432,7 @@ def refresh_loop():
                 _state["updated_at"] = dt.datetime.utcnow().isoformat() + "Z"
                 _state["error"] = None
             log.info("Dados atualizados com sucesso.")
+            _atualizar_posters_ranking(data)
         except Exception as exc:  # noqa: BLE001
             log.exception("Falha ao atualizar dados do CRM")
             with _state_lock:
