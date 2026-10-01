@@ -507,18 +507,40 @@ def export_linhas_mes():
 
     order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
     lead_stage_by_order = {}
+    lead_dates_by_order = {}
     lookup_erro = None
     if order_ids:
         try:
             orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
             lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
             lead_stage = {}
+            lead_activation = {}
+            lead_sale_date = {}
             if lead_ids:
-                lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
+                # x_activation_date / x_sale_date são campos customizados do
+                # CRM (confirmados em 2026-09-15) — se algum deles não
+                # existir mais/ainda neste servidor, caímos de volta pra
+                # buscar só o stage, pra não quebrar o export inteiro
+                # (pedido da Isabela em 2026-10-01: data de ativação por
+                # pedido, pra bater o fechamento com o que o CRM mostra).
+                try:
+                    lead_recs = crm.execute_kw(
+                        "crm.lead", "read", [lead_ids],
+                        {"fields": ["id", "stage_id", "x_activation_date", "x_sale_date"]},
+                    )
+                except Exception:  # noqa: BLE001
+                    lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
                 lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+                lead_activation = {l["id"]: l.get("x_activation_date") for l in lead_recs}
+                lead_sale_date = {l["id"]: l.get("x_sale_date") for l in lead_recs}
             for o in orders:
                 opp = o.get("opportunity_id")
-                lead_stage_by_order[o["id"]] = lead_stage.get(opp[0]) if opp else None
+                opp_id = opp[0] if opp else None
+                lead_stage_by_order[o["id"]] = lead_stage.get(opp_id) if opp_id else None
+                lead_dates_by_order[o["id"]] = {
+                    "data_ativacao": lead_activation.get(opp_id) if opp_id else None,
+                    "data_venda": lead_sale_date.get(opp_id) if opp_id else None,
+                }
         except Exception as exc:  # noqa: BLE001
             lookup_erro = str(exc)
 
@@ -528,6 +550,7 @@ def export_linhas_mes():
         order_name = order[1].strip().upper() if order else None
         order_id_num = order[0] if order else None
         stage_name_lead = lead_stage_by_order.get(order_id_num)
+        dates_lead = lead_dates_by_order.get(order_id_num) or {}
         flags_lead = classify_stage(stage_name_lead)
         req_name = r["request_type_id"][1] if r.get("request_type_id") else None
         prod_id = r["product_id"][0] if r.get("product_id") else None
@@ -543,6 +566,8 @@ def export_linhas_mes():
             "cliente": r["order_partner_id"][1] if r.get("order_partner_id") else None,
             "pedido": order_name,
             "create_date": r.get("create_date"),
+            "data_ativacao": dates_lead.get("data_ativacao"),
+            "data_venda": dates_lead.get("data_venda"),
             "produto": r["product_id"][1] if r.get("product_id") else None,
             "categoria_produto": categ_name,
             "tipo_solicitacao": req_name,
