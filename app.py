@@ -588,6 +588,143 @@ def export_linhas_mes():
     })
 
 
+@app.route("/api/export_pedidos_lista", methods=["GET", "POST"])
+def export_pedidos_lista():
+    """Mesma exportação linha-a-linha do /api/export_linhas_mes (PV,
+    Supervisor, Consultor, cliente, produto, categoria, valor, etapa,
+    data de ativação/venda etc.), mas pra uma lista explícita de números
+    de pedido (Número da Cotação, ex: S42104) em vez do mês atual — serve
+    pra auditar pedidos de qualquer período (pedido da Isabela em
+    2026-10-01, lista de ~1200 pedidos pra conferir).
+
+    GET  /api/export_pedidos_lista?nomes=S12345,S67890
+    POST /api/export_pedidos_lista  {"nomes": ["S12345", "S67890", ...]}
+    (POST é preferível pra listas grandes, pra não esbarrar em limite de
+    tamanho de URL.)
+    """
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        nomes_lista = body.get("nomes") or []
+    else:
+        nomes_param = request.args.get("nomes", "")
+        nomes_lista = nomes_param.split(",")
+    nomes = sorted({n.strip().upper() for n in nomes_lista if n and n.strip()})
+    if not nomes:
+        return jsonify({"erro": "passe ?nomes=S12345,S67890 (GET) ou {\"nomes\": [...]} (POST)"}), 400
+
+    uid_map = build_user_id_map(crm.search_read)
+
+    # Busca em lotes pra não estourar limites do lado do Odoo com listas
+    # muito grandes (ex: 1200+ pedidos de uma vez).
+    LOTE = 300
+    lines = []
+    for i in range(0, len(nomes), LOTE):
+        lote_nomes = nomes[i:i + LOTE]
+        lines.extend(crm.search_read(
+            "sale.order.line", [["order_id.name", "in", lote_nomes]],
+            fields=["product_id", "request_type_id", "price_total", "salesman_id", "order_id",
+                    "order_partner_id", "create_date"],
+            limit=0,
+        ))
+
+    product_ids = sorted({r["product_id"][0] for r in lines if r.get("product_id")})
+    prod_categ = {}
+    if product_ids:
+        prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
+        prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
+
+    order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
+    lead_stage_by_order = {}
+    lead_dates_by_order = {}
+    lookup_erro = None
+    if order_ids:
+        try:
+            orders = []
+            for i in range(0, len(order_ids), LOTE):
+                orders.extend(crm.execute_kw(
+                    "sale.order", "read", [order_ids[i:i + LOTE]], {"fields": ["id", "opportunity_id"]},
+                ))
+            lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
+            lead_stage = {}
+            lead_activation = {}
+            lead_sale_date = {}
+            if lead_ids:
+                try:
+                    lead_recs = []
+                    for i in range(0, len(lead_ids), LOTE):
+                        lead_recs.extend(crm.execute_kw(
+                            "crm.lead", "read", [lead_ids[i:i + LOTE]],
+                            {"fields": ["id", "stage_id", "x_activation_date", "x_sale_date"]},
+                        ))
+                except Exception:  # noqa: BLE001
+                    lead_recs = []
+                    for i in range(0, len(lead_ids), LOTE):
+                        lead_recs.extend(crm.execute_kw(
+                            "crm.lead", "read", [lead_ids[i:i + LOTE]], {"fields": ["id", "stage_id"]},
+                        ))
+                lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
+                lead_activation = {l["id"]: l.get("x_activation_date") for l in lead_recs}
+                lead_sale_date = {l["id"]: l.get("x_sale_date") for l in lead_recs}
+            for o in orders:
+                opp = o.get("opportunity_id")
+                opp_id = opp[0] if opp else None
+                lead_stage_by_order[o["id"]] = lead_stage.get(opp_id) if opp_id else None
+                lead_dates_by_order[o["id"]] = {
+                    "data_ativacao": lead_activation.get(opp_id) if opp_id else None,
+                    "data_venda": lead_sale_date.get(opp_id) if opp_id else None,
+                }
+        except Exception as exc:  # noqa: BLE001
+            lookup_erro = str(exc)
+
+    out = []
+    encontrados = {n: False for n in nomes}
+    for r in lines:
+        order = r.get("order_id")
+        order_name = order[1].strip().upper() if order else None
+        if order_name in encontrados:
+            encontrados[order_name] = True
+        order_id_num = order[0] if order else None
+        stage_name_lead = lead_stage_by_order.get(order_id_num)
+        dates_lead = lead_dates_by_order.get(order_id_num) or {}
+        flags_lead = classify_stage(stage_name_lead)
+        req_name = r["request_type_id"][1] if r.get("request_type_id") else None
+        prod_id = r["product_id"][0] if r.get("product_id") else None
+        categ_name = prod_categ.get(prod_id)
+        prod_name = r["product_id"][1] if r.get("product_id") else None
+        categorias_ok = [cat for cat in REVENUE_CATEGORIES if line_matches_category(categ_name, req_name, cat, prod_name=prod_name)]
+        salesman = r.get("salesman_id")
+        info = uid_map.get(salesman[0]) if salesman else None
+        out.append({
+            "pv": info["pv"] if info else None,
+            "supervisor": info["supervisor"] if info else None,
+            "consultor": info["nome"] if info else (salesman[1] if salesman else None),
+            "cliente": r["order_partner_id"][1] if r.get("order_partner_id") else None,
+            "pedido": order_name,
+            "create_date": r.get("create_date"),
+            "data_ativacao": dates_lead.get("data_ativacao"),
+            "data_venda": dates_lead.get("data_venda"),
+            "produto": r["product_id"][1] if r.get("product_id") else None,
+            "categoria_produto": categ_name,
+            "tipo_solicitacao": req_name,
+            "price_total": r.get("price_total"),
+            "lead_stage": stage_name_lead,
+            "lead_concluido_ou_em_tramite": bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+            "categorias_de_receita_que_bateram": categorias_ok,
+            "conta_como_receita": bool(categorias_ok) and bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
+        })
+
+    nao_encontrados = sorted([n for n, achou in encontrados.items() if not achou])
+
+    return jsonify({
+        "gerado_em": dt.datetime.utcnow().isoformat() + "Z",
+        "total_pedidos": len(nomes),
+        "total_linhas": len(out),
+        "pedidos_nao_encontrados": nao_encontrados,
+        "erro_lookup_lead": lookup_erro,
+        "linhas": out,
+    })
+
+
 @app.route("/api/debug_pedidos")
 def debug_pedidos():
     """Diagnóstico manual: mostra, pra uma lista de números de pedido
