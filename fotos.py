@@ -1,48 +1,69 @@
 """
-Fotos de consultores/supervisores para o modo TV (bolinha do avatar no
-cabeçalho). As fotos ficam em static/fotos/<primeiro_nome>.jpg (minúsculo,
-sem acento) — cada arquivo casa com a pessoa pelo PRIMEIRO NOME, então tanto
-faz se a pessoa aparece como consultor ou como supervisor.
+Fotos das pessoas para o modo TV e o Explorar.
 
-Para adicionar/trocar uma foto: salvar um arquivo .jpg/.jpeg/.png em
-static/fotos/ com o primeiro nome da pessoa (ex: kauan.jpg) e reiniciar o
-serviço. Quem não tiver foto continua aparecendo com as iniciais, como antes.
+Desde 2026-10-08 as fotos são casadas pelo LOGIN do CRM (único), e não mais
+pelo primeiro nome — com a entrada do PV 03 passaram a existir várias
+pessoas com o mesmo primeiro nome (duas Larissas, duas Rafaelas, dois
+Brunos, Flavio Manoel x Flávio dono do PV 02...), e o casamento por primeiro
+nome trocava as fotos.
+
+Arquivos: static/fotos/pessoas/<parte do login antes do @>.jpg
+  ex: agnes.reis@global       -> static/fotos/pessoas/agnes.reis.jpg
+      larissa.menezes@grupoglobal.net.br -> static/fotos/pessoas/larissa.menezes.jpg
+
+Se não houver arquivo pelo login, tenta pelo nome (sem acento, minúsculo,
+espaços viram "-"): nome completo do CRM, nome de exibição, e as duas
+primeiras palavras do nome (ex: "amanda-coimbra.jpg"). Quem não tiver foto
+continua aparecendo com as iniciais.
+
+Fotos de proprietários de PV e de líderes de equipe são definidas em
+tv_config.py (PV_FOTOS e EQUIPES[...]["lideres"]).
 """
 import os
 import re
 import unicodedata
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FOTOS_DIR = os.path.join(BASE_DIR, "static", "fotos")
+PESSOAS_DIR = os.path.join(BASE_DIR, "static", "fotos", "pessoas")
+EXTENSOES = (".jpg", ".jpeg", ".png")
 
 
-def _norm_first_name(nome):
-    if not nome:
+def _slug(texto):
+    if not texto:
         return ""
-    first = str(nome).strip().split()[0] if str(nome).strip() else ""
-    first = first.upper()
-    first = unicodedata.normalize("NFKD", first)
-    first = "".join(c for c in first if not unicodedata.combining(c))
-    return re.sub(r"[^A-Z0-9]", "", first)
+    t = unicodedata.normalize("NFKD", str(texto))
+    t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+    return re.sub(r"[^a-z0-9.]+", "-", t).strip("-")
 
 
-def _load_fotos_map():
-    mapping = {}
-    if not os.path.isdir(FOTOS_DIR):
-        return mapping
-    for fname in sorted(os.listdir(FOTOS_DIR)):
-        if fname.startswith(".") or not fname.lower().endswith((".jpg", ".jpeg", ".png")):
+def _load():
+    mapa = {}
+    if not os.path.isdir(PESSOAS_DIR):
+        return mapa
+    for fname in sorted(os.listdir(PESSOAS_DIR)):
+        if fname.startswith(".") or not fname.lower().endswith(EXTENSOES):
             continue
-        stem = os.path.splitext(fname)[0]
-        key = _norm_first_name(stem)
-        if key:
-            mapping[key] = "fotos/" + fname
-    return mapping
+        mapa[os.path.splitext(fname)[0].lower()] = "fotos/pessoas/" + fname
+    return mapa
 
 
-# {PRIMEIRO_NOME_NORMALIZADO: "fotos/arquivo.jpg"} — caminho relativo a static/
-FOTOS_MAP = _load_fotos_map()
+# {chave (login sem domínio ou nome em slug): "fotos/pessoas/arquivo.jpg"}
+FOTOS_PESSOAS = _load()
 
 
-def foto_for_nome(nome):
-    return FOTOS_MAP.get(_norm_first_name(nome))
+def foto_pessoa(login=None, *nomes):
+    """Caminho relativo a static/ da foto da pessoa, ou None."""
+    chaves = []
+    if login:
+        chaves.append(str(login).split("@", 1)[0].lower())
+    for nome in nomes:
+        s = _slug(nome)
+        if s:
+            chaves.append(s)
+            partes = s.split("-")
+            if len(partes) > 2:
+                chaves.append("-".join(partes[:2]))
+    for k in chaves:
+        if k in FOTOS_PESSOAS:
+            return FOTOS_PESSOAS[k]
+    return None

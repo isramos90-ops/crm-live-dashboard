@@ -33,6 +33,7 @@ from flask import Flask, jsonify, render_template, request
 import odoo_client as crm
 import metas
 import fotos
+import tv_config
 import poster_generator
 from classification import classify_stage, is_movement_stage, line_matches_category, REVENUE_CATEGORIES
 import dias_uteis
@@ -132,6 +133,7 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
         sup_name, {"metrics": new_metric_bucket(), "consultores": {}, "equipe": info["equipe"]},
     )
     cons_bucket = sup_node["consultores"].setdefault(info["nome"], new_metric_bucket())
+    sup_node.setdefault("consultores_info", {})[info["nome"]] = info
     if not info.get("conta_no_pv", True):
         return [sup_node["metrics"], cons_bucket]
     return [pv_node["metrics"], sup_node["metrics"], cons_bucket]
@@ -321,20 +323,34 @@ def compute_period_metrics(start_dt, label, uid_map, force_include_orders=None, 
             if not hierarchy_mod.is_excluded_from_pv_total(sup_node.get("equipe")):
                 pv_metas.append(sup_meta)
             consultores = []
+            infos = sup_node.get("consultores_info", {})
             for nome, metrics_bucket in sorted(sup_node["consultores"].items(), key=lambda x: -x[1]["convertido"]):
                 round_bucket_revenue(metrics_bucket)
                 cons_meta = metas.meta_for_usuario(nome)
+                info = infos.get(nome, {})
+                nome_exibicao = info.get("nome_exibicao") or nome
+                # Tela própria na TV + Top 3: só quem está no plano comercial
+                # do mês (tem meta) e não é linha de PARCEIROS (2026-10-08).
+                tem_plano = any(v > 0 for v in cons_meta.values())
                 consultores.append({
-                    "nome": nome, "meta": cons_meta, "pdu": pdu_com_realizado(cons_meta, metrics_bucket),
+                    "nome": nome, "nome_exibicao": nome_exibicao,
+                    "foto": fotos.foto_pessoa(info.get("login"), nome, nome_exibicao),
+                    "exibir_tv": bool(tem_plano and not info.get("ocultar_da_tv")),
+                    "meta": cons_meta, "pdu": pdu_com_realizado(cons_meta, metrics_bucket),
                     **metrics_bucket,
                 })
+            equipe_cfg = tv_config.EQUIPES.get(sup_node.get("equipe"), {})
             supervisors.append({
                 "supervisor": sup, "meta": sup_meta, "pdu": pdu_com_realizado(sup_meta, sup_node["metrics"]),
+                "lideres": equipe_cfg.get("lideres", []),
+                "foto": (equipe_cfg.get("lideres") or [{}])[0].get("foto"),
                 **sup_node["metrics"], "consultores": consultores,
             })
         pv_meta = metas.sum_metas(*pv_metas)
         hierarchy.append({
             "pv": pv, "meta": pv_meta, "pdu": pdu_com_realizado(pv_meta, pv_node["metrics"]),
+            "foto": tv_config.PV_FOTOS.get(pv),
+            "somente_visao_geral": pv in tv_config.PV_SOMENTE_VISAO_GERAL,
             **pv_node["metrics"], "supervisors": supervisors,
         })
 
@@ -450,7 +466,7 @@ def tv():
     return render_template(
         "tv.html", refresh_seconds=REFRESH_SECONDS,
         slide_seconds=TV_SLIDE_SECONDS,
-        fotos_map=fotos.FOTOS_MAP,
+        tv_pvs=tv_config.TV_PVS,
     )
 
 
@@ -462,10 +478,7 @@ def explorar():
     'visão geral' (agregado). Os dados continuam se atualizando sozinhos
     (mesma origem /api/data), só a seleção fica nas mãos de quem está
     olhando (pedido da Isabela em 2026-09-16)."""
-    return render_template(
-        "explorar.html", refresh_seconds=REFRESH_SECONDS,
-        fotos_map=fotos.FOTOS_MAP,
-    )
+    return render_template("explorar.html", refresh_seconds=REFRESH_SECONDS)
 
 
 @app.route("/api/data")

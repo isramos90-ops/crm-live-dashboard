@@ -19,6 +19,9 @@
     color: #fff;
   }
   .who { display: flex; align-items: center; gap: 12px; }
+  .avatars { display: flex; gap: 10px; }
+  .avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .avatar-wrap .cargo { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.85); }
   .avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; overflow: hidden; }
   .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .who h1 { font-size: 18px; margin: 0; }
@@ -122,7 +125,7 @@
 <body>
 <header>
   <div class="who">
-    <div class="avatar" id="hd-initials">–</div>
+    <div class="avatars" id="hd-avatars"><div class="avatar">–</div></div>
     <div>
       <h1 id="hd-nome">Carregando…</h1>
       <div class="sub" id="hd-cargo"></div>
@@ -145,10 +148,9 @@
 <script>
 const REFRESH_MS = {{ refresh_seconds * 1000 }};
 const SLIDE_MS = {{ slide_seconds * 1000 }};
-// {PRIMEIRO_NOME_NORMALIZADO: "fotos/arquivo.jpg"} — casa foto pelo primeiro
-// nome, funciona pra consultor ou supervisor (ver fotos.py).
-const FOTOS = {{ fotos_map | tojson }};
 const STATIC_BASE = "{{ url_for('static', filename='') }}";
+// PVs exibidos na rotação, na ordem (tv_config.TV_PVS no servidor).
+const TV_PVS = {{ tv_pvs | tojson }};
 
 function fmtBRL(v) { return (v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL', maximumFractionDigits:0}); }
 function fmtNum(v) { return (v || 0).toLocaleString('pt-BR'); }
@@ -167,30 +169,10 @@ function initials(nome) {
   const parts = (nome || '').trim().split(/\s+/);
   return ((parts[0]||'')[0] || '') + ((parts[1]||'')[0] || '');
 }
-function firstNameKey(nome) {
-  const first = (nome || '').trim().split(/\s+/)[0] || '';
-  return first.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
-}
-function fotoFor(nome) {
-  const path = FOTOS[firstNameKey(nome)];
-  return path ? (STATIC_BASE + path) : null;
-}
-
-// Fotos "especiais" pra níveis que não são uma pessoa (PV e equipe), mesma
-// lógica do Explorar: no PV 02, mostra a foto do Flávio (proprietário); na
-// Equipe Carteira do PV 02, mostra a foto da Isabela (é ela a supervisora
-// real dessa equipe); as demais equipes usam a foto de quem dá nome a elas
-// (ex: "EQUIPE RICHARD" -> Richard, "EQUIPE ALEXANDRE" -> Alexandre),
-// buscada pelo primeiro nome via fotoFor().
-function specialFoto(label, keyType, pv) {
-  if (keyType === 'pv' && label === 'PV 02') return STATIC_BASE + 'fotos/flavio-dono-pv02.jpg';
-  if (keyType === 'supervisor') {
-    if (pv === 'PV 02' && label === 'EQUIPE CARTEIRA') return STATIC_BASE + 'fotos/isabela-supervisora.jpg';
-    const suffix = label.replace(/^EQUIPE\s+/i, '');
-    return fotoFor(suffix);
-  }
-  return null;
-}
+// Desde 2026-10-08 a foto vem pronta do servidor em cada nó (pv.foto,
+// equipe.lideres[].foto, consultor.foto) — casada pelo login do CRM, ver
+// fotos.py e tv_config.py.
+function staticUrl(path) { return path ? (STATIC_BASE + path) : null; }
 
 let LAST_DATA = null;
 let LAST_UPDATED_AT = null;
@@ -237,73 +219,62 @@ function rankingPosterSlides() {
   }));
 }
 
-// Modo TV mostra só o PV 02 (pedido da Isabela em 2026-09-16) — pra trocar o
-// PV exibido (ou remover o filtro), edite essa constante.
-const TV_PV_FILTRO = "PV 02";
-
-// Ordem das telas (pedido da Isabela em 2026-09-24): primeiro a visão geral
-// do PV (foto do Flávio), depois cada Supervisor/Equipe (Carteira -> foto da
-// Isabela, Richard e Alexandre -> contando eles mesmos, com o plano
-// comercial de cada equipe), e só depois os consultores individualmente
-// (esses continuam ordenados do que está mais perto de bater a meta pro que
-// está mais longe).
-// Pedido da Isabela em 2026-09-25: excluir o Elton Bitencourt do Top 3 (aqui
-// e no poster_generator.py os dois têm essa mesma exclusão, cada um na sua
-// linguagem).
-const EXCLUDE_TOP3_NOMES = ['elton bitencourt'];
-function isExcludedDoTop3(nome) {
-  return EXCLUDE_TOP3_NOMES.includes((nome || '').trim().toLowerCase());
-}
-
+// Ordem das telas (2026-10-08): para cada PV de TV_PVS, primeiro a visão
+// geral do PV (foto do proprietário, sem nome), depois cada equipe (foto dos
+// líderes — ex: Equipe Daphne mostra Daphne + Elvio), depois os consultores
+// daquele PV do mais perto ao mais longe de bater o plano. PVs marcados como
+// "somente_visao_geral" (PV 04 / Elton) só têm a tela geral.
+// Consultor só ganha tela e entra no Top 3 se estiver no plano comercial do
+// mês e não for linha de PARCEIROS (campo "exibir_tv", calculado no servidor).
 function rebuildSlides() {
   const period = LAST_DATA.periods.month;
-  const pvSlides = [];
-  const supSlides = [];
-  const consultorSlides = [];
-  // Pedido da Isabela em 2026-09-25: nas telas de consultor, o Top 3 do
-  // podium passa a contar TODAS as equipes (não só a equipe do consultor
-  // da tela), sempre do maior pro menor % de batimento do PC, sem o Elton.
-  const todosConsultoresParaRanking = [];
+  const pvsTv = TV_PVS.map(nome => period.hierarchy.find(p => p.pv === nome)).filter(Boolean);
+  const slides = [];
 
-  for (const pv of period.hierarchy) {
-    if (TV_PV_FILTRO && pv.pv !== TV_PV_FILTRO) continue;
-
-    const pvFoto = specialFoto(pv.pv, 'pv', pv.pv);
-    pvSlides.push({
+  for (const pv of pvsTv) {
+    slides.push({
       node: pv, nivelLabel: pv.pv, subLabel: 'Visão geral do PV',
-      foto: pvFoto, isPessoa: !!pvFoto, fallbackAvatarText: 'PV',
-      peers: period.hierarchy, peerNameKey: 'pv', pvLabelForRanking: pv.pv,
+      avatars: pv.foto ? [{ foto: staticUrl(pv.foto), nome: pv.pv }] : [],
+      fallbackAvatarText: 'PV',
+      peers: pvsTv.map(p => ({ nome: p.pv, foto: staticUrl(p.foto), node: p })),
     });
+    if (pv.somente_visao_geral) continue;
 
+    const equipesPeers = pv.supervisors.map(sup => ({ nome: sup.supervisor, foto: staticUrl(sup.foto), node: sup }));
+    const consultoresPv = [];
     for (const sup of pv.supervisors) {
-      const supFoto = specialFoto(sup.supervisor, 'supervisor', pv.pv);
-      supSlides.push({
-        node: sup, nivelLabel: sup.supervisor, subLabel: 'PV: ' + pv.pv + ' · Visão geral da equipe',
-        foto: supFoto, isPessoa: !!supFoto, fallbackAvatarText: 'EQ',
-        peers: pv.supervisors, peerNameKey: 'supervisor', pvLabelForRanking: pv.pv,
+      const lideres = sup.lideres || [];
+      slides.push({
+        node: sup, nivelLabel: sup.supervisor,
+        subLabel: [pv.pv].concat(lideres.map(l => l.cargo + ': ' + l.nome)).join(' · '),
+        avatars: lideres.map(l => ({ foto: staticUrl(l.foto), nome: l.nome, cargo: l.cargo })),
+        fallbackAvatarText: 'EQ', peers: equipesPeers,
       });
-
       for (const c of sup.consultores) {
-        consultorSlides.push({
-          node: c, nivelLabel: c.nome, subLabel: 'PV: ' + pv.pv + ' · ' + sup.supervisor,
-          foto: fotoFor(c.nome), isPessoa: true, fallbackAvatarText: '',
-          peers: null, peerNameKey: 'nome', pvLabelForRanking: pv.pv,
-        });
-        if (!isExcludedDoTop3(c.nome)) todosConsultoresParaRanking.push(c);
+        if (c.exibir_tv) consultoresPv.push({ c, sup });
       }
+    }
+    const peersConsultores = consultoresPv.map(({ c }) => ({ nome: c.nome_exibicao || c.nome, foto: staticUrl(c.foto), node: c }));
+    const sortPct = (n) => { const p = pct(n.revenue['RECEITA TOTAL'].receita, n.meta.RECEITA_TOTAL); return p === null ? -1 : p; };
+    consultoresPv.sort((a, b) => sortPct(b.c) - sortPct(a.c));
+    for (const { c, sup } of consultoresPv) {
+      const nome = c.nome_exibicao || c.nome;
+      slides.push({
+        node: c, nivelLabel: nome, subLabel: pv.pv + ' · ' + sup.supervisor,
+        avatars: [{ foto: staticUrl(c.foto), nome }], fallbackAvatarText: initials(nome).toUpperCase(),
+        peers: peersConsultores,
+      });
     }
   }
 
-  // Todas as telas de consultor compartilham o mesmo Top 3 (todas as
-  // equipes juntas); o próprio rankingHtml já ordena do maior pro menor %.
-  for (const slide of consultorSlides) slide.peers = todosConsultoresParaRanking;
-
-  const sortPct = (s) => { const p = pct(s.node.revenue['RECEITA TOTAL'].receita, s.node.meta.RECEITA_TOTAL); return p === null ? -1 : p; };
-  consultorSlides.sort((a, b) => sortPct(b) - sortPct(a));
-
-  SLIDES = [...pvSlides, ...supSlides, ...consultorSlides, ...rankingPosterSlides()];
+  SLIDES = [...slides, ...rankingPosterSlides()];
   if (SLIDE_IDX >= SLIDES.length) SLIDE_IDX = 0;
   renderSlide();
+}
+
+function avatarHtml(a, fallback) {
+  const inner = a.foto ? `<img src="${a.foto}" alt="${a.nome || ''}">` : (initials(a.nome).toUpperCase() || fallback || '');
+  return `<div class="avatar-wrap"><div class="avatar">${inner}</div>${a.cargo ? `<div class="cargo">${a.cargo}</div>` : ''}</div>`;
 }
 
 function meterHtml(p, extraClass) {
@@ -318,7 +289,7 @@ function renderSlide() {
   const slide = SLIDES[SLIDE_IDX];
   document.getElementById('hd-nome').textContent = slide.nivelLabel;
   document.getElementById('hd-cargo').textContent = slide.subLabel;
-  const avatarEl = document.getElementById('hd-initials');
+  const avatarEl = document.getElementById('hd-avatars');
 
   if (slide.isImage) {
     document.body.classList.add('tv-fullscreen');
@@ -332,15 +303,9 @@ function renderSlide() {
   document.body.classList.remove('tv-fullscreen');
 
   const c = slide.node;
-  if (slide.isPessoa && slide.foto) {
-    avatarEl.innerHTML = `<img src="${slide.foto}" alt="${slide.nivelLabel}">`;
-  } else if (slide.isPessoa) {
-    avatarEl.innerHTML = '';
-    avatarEl.textContent = initials(slide.nivelLabel).toUpperCase();
-  } else {
-    avatarEl.innerHTML = '';
-    avatarEl.textContent = slide.fallbackAvatarText || '';
-  }
+  avatarEl.innerHTML = slide.avatars.length
+    ? slide.avatars.map(av => avatarHtml(av, slide.fallbackAvatarText)).join('')
+    : `<div class="avatar">${slide.fallbackAvatarText || ''}</div>`;
 
   const realizadoTotal = c.revenue['RECEITA TOTAL'].receita;
   const metaTotal = c.meta.RECEITA_TOTAL;
@@ -358,12 +323,12 @@ function renderSlide() {
   const coberturaPct = ratio(c.aceite_enviado, c.total);
 
   const rankingHtml = slide.peers
-    .map(p => ({ nome: p[slide.peerNameKey], p: pct(p.revenue['RECEITA TOTAL'].receita, p.meta.RECEITA_TOTAL) }))
+    .map(p => ({ nome: p.nome, foto: p.foto, p: pct(p.node.revenue['RECEITA TOTAL'].receita, p.node.meta.RECEITA_TOTAL) }))
     .filter(p => p.p !== null)
     .sort((a, b) => b.p - a.p)
     .slice(0, 3)
     .map((s, i) => {
-      const foto = specialFoto(s.nome, slide.peerNameKey, slide.pvLabelForRanking) || fotoFor(s.nome);
+      const foto = s.foto;
       const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
       return `<div class="ranking-card rank-${i+1}">
         <div class="ranking-photo">

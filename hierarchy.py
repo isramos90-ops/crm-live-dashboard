@@ -25,6 +25,8 @@ import re
 
 import pandas as pd
 
+import tv_config
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HIERARCHY_PATH = os.path.join(BASE_DIR, "config", "hierarquia_usuarios.xlsx")
 
@@ -33,7 +35,15 @@ EXCLUDED_TEAMS = {"BKO", "GERENTE VIVO", "PV071-00001", "PV071-00002", "PV071-00
 # Equipes que continuam aparecendo no drill-down (PV -> Supervisor ->
 # Consultor) com seus próprios números, mas cujo resultado NÃO deve ser
 # somado ao total/plano do PV (pedido da Isabela em 2026-09-16).
-EXCLUDED_FROM_PV_TOTAL = {"PV 02 - Equipe Elton"}
+# (2026-10-08) A Equipe Elton virou o PV 04 (ver tv_config.EQUIPES), então
+# ninguém mais precisa ficar fora da soma do próprio PV.
+EXCLUDED_FROM_PV_TOTAL = set()
+
+
+def normaliza_pv(pv):
+    """'PV03' / 'PV 3' / 'pv 03' -> 'PV 03' (no CRM o PV 03 vem sem espaço)."""
+    m = re.match(r"^\s*PV\s*0*(\d+)\s*$", str(pv or ""), flags=re.IGNORECASE)
+    return "PV {:02d}".format(int(m.group(1))) if m else str(pv or "").strip()
 
 
 def is_excluded_from_pv_total(equipe):
@@ -63,14 +73,20 @@ def load_hierarchy_by_login():
 
     result = {}
     for _, row in df.iterrows():
-        equipe = row["Equipes de vendas"]
+        login = row["Login"]
+        equipe = tv_config.LOGIN_EQUIPE.get(login, row["Equipes de vendas"])
+        cfg = tv_config.EQUIPES.get(equipe, {})
         pv = equipe.split(" - ", 1)[0].strip() if " - " in equipe else equipe
-        result[row["Login"]] = {
+        pv = cfg.get("pv") or normaliza_pv(pv)
+        result[login] = {
+            "login": login,
             "nome": row["Nome"],
+            "nome_exibicao": tv_config.NOME_EXIBICAO.get(login),
             "equipe": equipe,
             "pv": pv,
-            "supervisor": team_supervisor.get(equipe),
+            "supervisor": cfg.get("label") or team_supervisor.get(equipe),
             "conta_no_pv": not is_excluded_from_pv_total(equipe),
+            "ocultar_da_tv": login in tv_config.OCULTAR_DA_TV,
         }
     return result
 

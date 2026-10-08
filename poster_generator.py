@@ -235,8 +235,12 @@ def _extract_pv02_consultants(hierarchy):
             continue
         for sup in pv_entry.get("supervisors", []):
             for c in sup.get("consultores", []):
-                nome = (c.get("nome") or "").strip()
+                nome = (c.get("nome_exibicao") or c.get("nome") or "").strip()
                 if not nome or nome.lower() in EXCLUDE_NAMES:
+                    continue
+                # 2026-10-08: só quem está no plano do mês e não é linha de
+                # PARCEIROS (mesma regra das telas de consultor da TV).
+                if not c.get("exibir_tv", True):
                     continue
                 revenue = c.get("revenue", {})
                 out.append({
