@@ -493,7 +493,9 @@ def api_data():
 
 @app.route("/api/export_linhas_mes")
 def export_linhas_mes():
-    """Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
+    """Filtros opcionais: ?consultor=<parte do nome>&pv=<PV 03>.
+
+Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
     no cálculo de receita: create_date do mês OU pedido em
     config/pedidos_mes_atual.txt), uma linha por produto vendido, com
     cliente, número do pedido, PV/Supervisor/Consultor, categoria de
@@ -595,6 +597,15 @@ def export_linhas_mes():
             "conta_como_receita": bool(categorias_ok) and bool(flags_lead["concluido"] or flags_lead["em_tramite"]),
             "pedido_forcado_mes_atual": bool(order_name and order_name in PEDIDOS_MES_ATUAL),
         })
+
+    # Filtros opcionais (2026-10-09): ?consultor=elvio&pv=PV%2003 — substring,
+    # sem diferenciar maiúsculas, pra auditar só um pedaço do mês.
+    f_cons = (request.args.get("consultor") or "").strip().lower()
+    f_pv = (request.args.get("pv") or "").strip().lower()
+    if f_cons:
+        out = [r for r in out if f_cons in (r.get("consultor") or "").lower()]
+    if f_pv:
+        out = [r for r in out if f_pv == (r.get("pv") or "").lower()]
 
     return jsonify({
         "periodo": now.strftime("%m/%Y"),
