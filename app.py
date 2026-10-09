@@ -128,6 +128,10 @@ def hierarchy_buckets(pv_tree, uid_map, user_id):
     if not info:
         return None
     pv_node = pv_tree.setdefault(info["pv"], {"metrics": new_metric_bucket(), "supervisors": {}})
+    # Gerente (ex: Elvio): soma só no resultado geral do PV, sem equipe e
+    # sem tela própria (tv_config.SO_RESULTADO_DO_PV, 2026-10-09).
+    if info.get("so_resultado_do_pv"):
+        return [pv_node["metrics"]]
     sup_name = info["supervisor"] or "(sem supervisor)"
     sup_node = pv_node["supervisors"].setdefault(
         sup_name, {"metrics": new_metric_bucket(), "consultores": {}, "equipe": info["equipe"]},

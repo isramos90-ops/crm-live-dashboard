@@ -89,6 +89,13 @@ NOME_EXIBICAO = {
     "cauany.santos@grupoglobal.net.br": "Cauany Santos",
 }
 
+# Vendas que só somam no resultado geral do PV — não entram em nenhuma
+# equipe nem aparecem na TV como consultor (Isabela, 2026-10-09: o Elvio é
+# gerente e "só entra para o resultado geral").
+SO_RESULTADO_DO_PV = {
+    "elvio@global",
+}
+
 # Linhas "(PARCEIROS)" do plano: a meta e as vendas somam na equipe, mas a
 # pessoa não aparece como consultor na TV nem no Top 3.
 OCULTAR_DA_TV = {

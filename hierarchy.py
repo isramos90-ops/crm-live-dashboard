@@ -87,6 +87,7 @@ def load_hierarchy_by_login():
             "supervisor": cfg.get("label") or team_supervisor.get(equipe),
             "conta_no_pv": not is_excluded_from_pv_total(equipe),
             "ocultar_da_tv": login in tv_config.OCULTAR_DA_TV,
+            "so_resultado_do_pv": login in tv_config.SO_RESULTADO_DO_PV,
         }
     return result
 
