@@ -122,6 +122,50 @@
 
   footer { padding: 10px 24px 18px; text-align: center; font-size: 11px; color: var(--text-muted); }
   .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+  /* Aba Rankings (2026-10-14, esboço aprovado pela Isabela) */
+  .abas { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--gridline); }
+  .abas button { font: inherit; font-size: 14px; font-weight: 600; color: var(--text-secondary); background: none; border: 0; border-bottom: 3px solid transparent; padding: 14px 16px; cursor: pointer; min-height: 44px; }
+  .abas button[aria-selected="true"] { color: var(--brand-purple); font-weight: 800; border-bottom-color: var(--brand-purple); }
+  #view-rankings { max-width: 1320px; margin: 0 auto; padding: 20px 24px 40px; display: flex; flex-direction: column; gap: 20px; }
+  .rk-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .rk-pills .lbl { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+  .rk-pills button { min-height: 44px; padding: 10px 18px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid #d9cfe2; background: #fff; color: var(--brand-purple-dark); }
+  .rk-pills button[aria-pressed="true"] { background: var(--brand-purple); border-color: var(--brand-purple); color: #fff; }
+  .rk-pills .criterio { flex-basis: 100%; font-size: 12px; color: var(--text-muted); }
+  .rk-secao { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 16px; display: flex; flex-direction: column; gap: 18px; }
+  .rk-secao .topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .rk-secao h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--brand-purple-dark); text-transform: none; letter-spacing: 0; }
+  .rk-secao .legenda { font-size: 12px; color: var(--text-muted); }
+  .rk-podio { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 28px; padding: 6px 0 4px; }
+  .rk-top { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 220px; text-align: center; }
+  .rk-top.p1 { order: 2; padding-bottom: 24px; } .rk-top.p2 { order: 1; } .rk-top.p3 { order: 3; }
+  .rk-foto { position: relative; }
+  .rk-foto .circ { width: 128px; height: 128px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; border: 6px solid #9aa0a6; box-sizing: border-box; }
+  .rk-top.p1 .circ { width: 168px; height: 168px; border-color: #d4a017; font-size: 46px; }
+  .rk-top.p3 .circ { border-color: #b8733a; }
+  .rk-foto .circ img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rk-foto .pos { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); min-width: 44px; padding: 4px 10px; border-radius: 999px; background: #9aa0a6; color: #17131a; font-size: 15px; font-weight: 800; box-sizing: border-box; }
+  .rk-top.p1 .pos { background: #d4a017; } .rk-top.p3 .pos { background: #b8733a; }
+  .rk-top .nome { font-size: 16px; font-weight: 800; margin-top: 6px; }
+  .rk-top .sub, .rk-top .valor { font-size: 12px; color: var(--text-secondary); }
+  .rk-top .pct { font-size: 26px; font-weight: 800; color: var(--brand-purple); }
+  .rk-resto { border-top: 1px solid var(--gridline); display: flex; flex-direction: column; }
+  .rk-resto .lbl { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 0 6px; }
+  .rk-linha { display: grid; grid-template-columns: 36px 44px minmax(0, 1fr) minmax(80px, 260px) 60px; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0ecf3; }
+  .rk-linha .pos { font-size: 15px; font-weight: 800; color: var(--text-muted); text-align: right; }
+  .rk-linha .mini { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .rk-linha .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rk-linha .txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rk-linha .txt b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rk-linha .txt span { font-size: 12px; color: var(--text-secondary); }
+  .rk-barra { height: 8px; border-radius: 4px; background: #eee7f3; overflow: hidden; }
+  .rk-barra div { height: 100%; border-radius: 4px; background: var(--brand-purple); }
+  .rk-barra div.ok { background: var(--good); }
+  .rk-linha .pctl { font-size: 15px; font-weight: 800; color: var(--brand-purple); text-align: right; }
+  .rk-vazio { font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--gridline); padding-top: 12px; }
+  @media (max-width: 760px) { .rk-top.p1 { order: 1; padding-bottom: 0; } .rk-top.p2 { order: 2; } }
+  @media (max-width: 640px) { .rk-linha { grid-template-columns: 28px 40px minmax(0, 1fr) 52px; } .rk-barra { display: none; } }
 </style>
 </head>
 <body>
@@ -141,6 +185,12 @@
   </div>
 </header>
 
+<nav class="abas" role="tablist" aria-label="Abas do Explorar">
+  <button type="button" role="tab" id="aba-nivel" aria-selected="true" aria-controls="view-nivel">Visão por PV / Supervisor / Consultor</button>
+  <button type="button" role="tab" id="aba-rankings" aria-selected="false" aria-controls="view-rankings">Rankings</button>
+</nav>
+
+<div id="view-nivel" role="tabpanel" aria-labelledby="aba-nivel">
 <div class="filtros">
   <div class="campo">
     <label for="sel-pv">PV</label>
@@ -159,6 +209,12 @@
 <main id="main">
   <div class="no-data" style="grid-column: span 3;">Carregando dados…</div>
 </main>
+</div>
+
+<section id="view-rankings" role="tabpanel" aria-labelledby="aba-rankings" hidden>
+  <div class="rk-pills" id="rk-pills"></div>
+  <div id="rk-secoes"><div class="no-data">Carregando dados…</div></div>
+</section>
 
 <footer>Painel CRM · Vivo Empresas · Grupo Global — consulta manual, atualiza os dados sozinho a cada {{ refresh_seconds }}s</footer>
 
@@ -205,6 +261,7 @@ async function fetchData() {
     if (state.data) {
       LAST_DATA = state.data;
       rebuildSelectsAndRender();
+      renderRankings();
     }
   } catch (e) {
     console.error(e);
@@ -452,6 +509,125 @@ document.getElementById('sel-cons').addEventListener('change', (e) => {
   SEL_CONS = e.target.value;
   rebuildSelectsAndRender();
 });
+
+
+// ------------------------------------------------------------------
+// Aba Rankings (2026-10-14, esboço aprovado pela Isabela): melhor PV,
+// supervisor/equipe e consultor por produto (PC entregue = Receita Total,
+// Banda Larga, Renovação, Aparelhos). Ordem = % do plano batido; quem não
+// tem plano naquele produto não entra. Top 3 com foto grande, resto em
+// lista com foto pequena. PVs "somente visão geral" (PV 04) ficam fora;
+// consultores só os do plano do mês (exibir_tv, mesma regra da TV).
+// ------------------------------------------------------------------
+const RK_PRODUTOS = [
+  { key: 'pc', label: 'PC entregue (Receita Total)', cat: 'RECEITA TOTAL', campo: 'receita', meta: 'RECEITA_TOTAL', money: true },
+  { key: 'bl', label: 'Banda Larga', cat: 'BANDA LARGA', campo: 'qtd', meta: 'QUANTIDADE_BL', money: false },
+  { key: 'renov', label: 'Renovação', cat: 'RENOVAÇÃO', campo: 'receita', meta: 'RECEITA_RENOVACAO', money: true },
+  { key: 'apar', label: 'Aparelhos', cat: 'APARELHO', campo: 'receita', meta: 'RECEITA_APARELHOS', money: true },
+];
+let RK_PROD = 'pc';
+let ABA = 'nivel';
+try { RK_PROD = localStorage.getItem('rk_prod') || 'pc'; ABA = localStorage.getItem('explorar_aba') || 'nivel'; } catch (e) {}
+if (!RK_PRODUTOS.some(p => p.key === RK_PROD)) RK_PROD = 'pc';
+
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function setAba(aba) {
+  ABA = aba;
+  try { localStorage.setItem('explorar_aba', aba); } catch (e) {}
+  const rk = aba === 'rankings';
+  document.getElementById('aba-nivel').setAttribute('aria-selected', String(!rk));
+  document.getElementById('aba-rankings').setAttribute('aria-selected', String(rk));
+  document.getElementById('view-nivel').hidden = rk;
+  document.getElementById('view-rankings').hidden = !rk;
+  if (rk) { cabecalhoRankings(); renderRankings(); }
+  else if (LAST_DATA) rebuildSelectsAndRender();
+}
+document.getElementById('aba-nivel').addEventListener('click', () => setAba('nivel'));
+document.getElementById('aba-rankings').addEventListener('click', () => setAba('rankings'));
+
+function cabecalhoRankings() {
+  const per = LAST_DATA ? LAST_DATA.periods.month.label : '';
+  document.getElementById('hd-nome').textContent = 'Rankings do mês';
+  document.getElementById('hd-cargo').textContent = (per ? per + ' · ' : '') + 'todos os PVs';
+  const av = document.getElementById('hd-initials');
+  av.innerHTML = ''; av.textContent = '🏆';
+}
+
+function rkFotoHtml(foto, nome) {
+  return foto ? `<img src="${esc(staticUrl(foto))}" alt="${esc(nome)}">` : esc(initials(nome).toUpperCase());
+}
+
+function rkRank(itens, prod) {
+  return itens.map(it => {
+    const meta = (it.node.meta || {})[prod.meta] || 0;
+    const real = ((it.node.revenue || {})[prod.cat] || {})[prod.campo] || 0;
+    return { ...it, meta, real, p: meta > 0 ? 100 * real / meta : null };
+  }).filter(x => x.p !== null).sort((a, b) => b.p - a.p);
+}
+
+function rkValor(x, prod) {
+  return prod.money ? `${fmtBRL(x.real)} de ${fmtBRL(x.meta)}` : `${fmtNum(x.real)} de ${fmtNum(x.meta)} BL`;
+}
+
+function rkSecao(titulo, legenda, itens, prod, vazioMsg) {
+  const r = rkRank(itens, prod);
+  if (!r.length) return `<section class="rk-secao"><div class="topo"><h2>${esc(titulo)}</h2></div><div class="rk-vazio">Ninguém com plano em ${esc(prod.label)} ainda.</div></section>`;
+  const podio = r.slice(0, 3).map((x, i) => `
+    <div class="rk-top p${i + 1}">
+      <div class="rk-foto"><div class="circ">${rkFotoHtml(x.foto, x.nome)}</div><span class="pos">${i + 1}º</span></div>
+      <span class="nome">${esc(x.nome)}</span>
+      <span class="sub">${esc(x.sub)}</span>
+      <span class="pct">${x.p.toFixed(0)}%</span>
+      <span class="valor">${rkValor(x, prod)}</span>
+    </div>`).join('');
+  const resto = r.slice(3);
+  const restoHtml = resto.length ? `<div class="rk-resto"><span class="lbl">Demais colocados</span>${resto.map((x, i) => `
+    <div class="rk-linha">
+      <span class="pos">${i + 4}º</span>
+      <div class="mini">${rkFotoHtml(x.foto, x.nome)}</div>
+      <div class="txt"><b>${esc(x.nome)}</b><span>${esc(x.sub)} · ${rkValor(x, prod)}</span></div>
+      <div class="rk-barra"><div class="${x.p >= 100 ? 'ok' : ''}" style="width:${Math.min(100, x.p).toFixed(1)}%"></div></div>
+      <span class="pctl">${x.p.toFixed(0)}%</span>
+    </div>`).join('')}</div>` : `<div class="rk-vazio">${esc(vazioMsg)}</div>`;
+  return `<section class="rk-secao"><div class="topo"><h2>${esc(titulo)}</h2><span class="legenda">${esc(legenda)}</span></div><div class="rk-podio">${podio}</div>${restoHtml}</section>`;
+}
+
+function renderRankings() {
+  const pillsEl = document.getElementById('rk-pills');
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  pillsEl.innerHTML = '<span class="lbl">Ranking por</span>' + RK_PRODUTOS.map(p =>
+    `<button type="button" data-prod="${p.key}" aria-pressed="${p.key === RK_PROD}">${esc(p.label)}</button>`).join('') +
+    `<span class="criterio">Ordem: % do plano batido em ${esc(prod.key === 'pc' ? 'Receita Total (PC entregue)' : prod.label)}. Quem não tem plano nesse produto não entra no ranking.</span>`;
+  pillsEl.querySelectorAll('button[data-prod]').forEach(b => b.addEventListener('click', () => {
+    RK_PROD = b.dataset.prod;
+    try { localStorage.setItem('rk_prod', RK_PROD); } catch (e) {}
+    renderRankings();
+  }));
+  if (!LAST_DATA) return;
+  if (ABA === 'rankings') cabecalhoRankings();
+
+  const pvs = LAST_DATA.periods.month.hierarchy.filter(pv => !pv.somente_visao_geral);
+  const pvItens = pvs.map(pv => ({ node: pv, nome: pv.pv, sub: 'Proprietário', foto: pv.foto }));
+  const supItens = [];
+  const consItens = [];
+  for (const pv of pvs) {
+    for (const sup of pv.supervisors) {
+      const lid = (sup.lideres || [])[0];
+      const equipe = sup.supervisor.replace(/^EQUIPE\s+/i, 'Equipe ').replace(/\B\w+/g, w => w.toLowerCase());
+      supItens.push({ node: sup, nome: equipe, sub: pv.pv + (lid ? ' · ' + lid.cargo + ' ' + lid.nome : ''), foto: sup.foto });
+      for (const c of sup.consultores) {
+        if (!c.exibir_tv) continue;
+        consItens.push({ node: c, nome: c.nome_exibicao || c.nome, sub: pv.pv + ' · ' + equipe, foto: c.foto });
+      }
+    }
+  }
+  document.getElementById('rk-secoes').innerHTML =
+    rkSecao('Melhor PV · ' + prod.label, 'Foto do proprietário', pvItens, prod, 'Todos os PVs já aparecem no pódio.') +
+    rkSecao('Melhor supervisor · ' + prod.label, 'Resultado da equipe · com o PV de cada uma', supItens, prod, 'Todas as equipes já aparecem no pódio.') +
+    rkSecao('Melhor consultor · ' + prod.label, 'Só consultores do plano do mês · com PV e equipe', consItens, prod, 'Todos os consultores já aparecem no pódio.');
+}
+if (ABA === 'rankings') setAba('rankings');
 
 fetchData();
 setInterval(fetchData, REFRESH_MS);
