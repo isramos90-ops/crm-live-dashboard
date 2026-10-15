@@ -164,6 +164,17 @@
   .rk-barra div.ok { background: var(--good); }
   .rk-linha .pctl { font-size: 15px; font-weight: 800; color: var(--brand-purple); text-align: right; }
   .rk-vazio { font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--gridline); padding-top: 12px; }
+  .rk-acao { min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--brand-purple); background: #fff; color: var(--brand-purple); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .rk-acao:hover { background: #f2e3fa; }
+  .rk-acao[disabled] { opacity: .6; cursor: wait; }
+  .rk-acao.forte { background: var(--brand-purple); color: #fff; }
+  .rk-topo-geral { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+  .rk-marca { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 10px; background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%); color: #fff; }
+  .rk-marca b { font-size: 18px; } .rk-marca span { font-size: 12px; opacity: .9; }
+  .rk-marca img { height: 26px; background: #fff; border-radius: 6px; padding: 4px 8px; }
+  .capturando > .rk-marca { display: flex; }
+  .capturando .rk-acao, .capturando .rk-topo-geral { display: none !important; }
+  .capturando { padding: 16px; background: #f3eef7; }
   @media (max-width: 760px) { .rk-top.p1 { order: 1; padding-bottom: 0; } .rk-top.p2 { order: 2; } }
   @media (max-width: 640px) { .rk-linha { grid-template-columns: 28px 40px minmax(0, 1fr) 52px; } .rk-barra { display: none; } }
 </style>
@@ -213,11 +224,15 @@
 
 <section id="view-rankings" role="tabpanel" aria-labelledby="aba-rankings" hidden>
   <div class="rk-pills" id="rk-pills"></div>
+  <div class="rk-topo-geral">
+    <button type="button" class="rk-acao forte" id="rk-print-tudo">Gerar imagem dos 3 rankings</button>
+  </div>
   <div id="rk-secoes"><div class="no-data">Carregando dados…</div></div>
 </section>
 
 <footer>Painel CRM · Vivo Empresas · Grupo Global — consulta manual, atualiza os dados sozinho a cada {{ refresh_seconds }}s</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const REFRESH_MS = {{ refresh_seconds * 1000 }};
 const STATIC_BASE = "{{ url_for('static', filename='') }}";
@@ -572,7 +587,9 @@ function rkValor(x, prod) {
 
 function rkSecao(titulo, legenda, itens, prod, vazioMsg) {
   const r = rkRank(itens, prod);
-  if (!r.length) return `<section class="rk-secao"><div class="topo"><h2>${esc(titulo)}</h2></div><div class="rk-vazio">Ninguém com plano em ${esc(prod.label)} ainda.</div></section>`;
+  const marca = rkMarcaHtml();
+  const acao = `<button type="button" class="rk-acao" data-print="${esc(titulo)}">Gerar imagem</button>`;
+  if (!r.length) return `<section class="rk-secao">${marca}<div class="topo"><h2>${esc(titulo)}</h2></div><div class="rk-vazio">Ninguém com plano em ${esc(prod.label)} ainda.</div></section>`;
   const podio = r.slice(0, 3).map((x, i) => `
     <div class="rk-top p${i + 1}">
       <div class="rk-foto"><div class="circ">${rkFotoHtml(x.foto, x.nome)}</div><span class="pos">${i + 1}º</span></div>
@@ -590,7 +607,7 @@ function rkSecao(titulo, legenda, itens, prod, vazioMsg) {
       <div class="rk-barra"><div class="${x.p >= 100 ? 'ok' : ''}" style="width:${Math.min(100, x.p).toFixed(1)}%"></div></div>
       <span class="pctl">${x.p.toFixed(0)}%</span>
     </div>`).join('')}</div>` : `<div class="rk-vazio">${esc(vazioMsg)}</div>`;
-  return `<section class="rk-secao"><div class="topo"><h2>${esc(titulo)}</h2><span class="legenda">${esc(legenda)}</span></div><div class="rk-podio">${podio}</div>${restoHtml}</section>`;
+  return `<section class="rk-secao">${marca}<div class="topo"><h2>${esc(titulo)}</h2><span class="legenda">${esc(legenda)}</span>${acao}</div><div class="rk-podio">${podio}</div>${restoHtml}</section>`;
 }
 
 function renderRankings() {
@@ -622,12 +639,59 @@ function renderRankings() {
       }
     }
   }
-  document.getElementById('rk-secoes').innerHTML =
+  document.getElementById('rk-secoes').innerHTML = rkMarcaHtml() +
     rkSecao('Melhor PV · ' + prod.label, 'Foto do proprietário', pvItens, prod, 'Todos os PVs já aparecem no pódio.') +
     rkSecao('Melhor supervisor · ' + prod.label, 'Resultado da equipe · com o PV de cada uma', supItens, prod, 'Todas as equipes já aparecem no pódio.') +
     rkSecao('Melhor consultor · ' + prod.label, 'Só consultores do plano do mês · com PV e equipe', consItens, prod, 'Todos os consultores já aparecem no pódio.');
 }
 if (ABA === 'rankings') setAba('rankings');
+
+// ------------------------------------------------------------------
+// "Print" para o grupo dos consultores (2026-10-14): gera uma imagem PNG
+// do ranking (uma seção ou os 3 juntos), com faixa Grupo Global + mês.
+// No celular abre o compartilhar (WhatsApp); no computador baixa o arquivo.
+// ------------------------------------------------------------------
+function rkMarcaHtml() {
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  const per = LAST_DATA ? LAST_DATA.periods.month.label : '';
+  const agora = new Date().toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  return `<div class="rk-marca"><div><b>Rankings ${esc(per)} · ${esc(prod.label)}</b><br><span>Atualizado em ${esc(agora)} · % do plano batido</span></div><img src="{{ url_for('static', filename='logo-grupo-global.png') }}" alt="Grupo Global"></div>`;
+}
+function rkNomeArquivo(t) {
+  return ('ranking-' + t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+async function rkCapturar(el, nome, botao) {
+  if (typeof html2canvas !== 'function') { alertaRk('Não consegui carregar o gerador de imagem. Atualize a página e tente de novo.'); return; }
+  const txt = botao.textContent; botao.disabled = true; botao.textContent = 'Gerando…';
+  el.classList.add('capturando');
+  try {
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#f3eef7', useCORS: true, logging: false });
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file = new File([blob], nome + '.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Rankings Grupo Global' }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nome + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } finally {
+    el.classList.remove('capturando'); botao.disabled = false; botao.textContent = txt;
+  }
+}
+function alertaRk(msg) {
+  const d = document.createElement('div'); d.className = 'no-data'; d.textContent = msg;
+  document.getElementById('rk-secoes').prepend(d); setTimeout(() => d.remove(), 6000);
+}
+document.getElementById('rk-secoes').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-print]'); if (!b) return;
+  rkCapturar(b.closest('.rk-secao'), rkNomeArquivo(b.dataset.print), b);
+});
+document.getElementById('rk-print-tudo').addEventListener('click', (ev) => {
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  rkCapturar(document.getElementById('rk-secoes'), rkNomeArquivo(prod.label), ev.currentTarget);
+});
 
 fetchData();
 setInterval(fetchData, REFRESH_MS);
