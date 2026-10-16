@@ -15,9 +15,10 @@ funil de vendas (Proposta enviada / Aceite enviado / Proposta recusada /
 Finalizado) e um ranking dos 3 consultores com maior % de meta batida — e
 avança automaticamente para o próximo consultor a cada 12s (configurável via
 `TV_SLIDE_SECONDS`). Não inclui Ligações nem WhatsApp (sem esses dados no CRM).
-Desde 2026-10-08 o modo TV mostra **PV 02, PV 03 e PV 04**, nessa ordem
-(visão geral do PV → equipes → consultores de cada PV; o PV 04 só tem a
-visão geral). Quem aparece, nomes de equipe, líderes com foto (ex: Equipe
+Desde 2026-10-08 o modo TV mostra **PV 02 e PV 03**, nessa ordem
+(visão geral do PV → equipes → consultores de cada PV). Desde 2026-10-16 a
+Equipe Elton é uma equipe do PV 02 (o PV 04 deixou de existir) e soma no
+resultado do PV 02. Quem aparece, nomes de equipe, líderes com foto (ex: Equipe
 Daphne mostra Daphne + Elvio, gerente) e as linhas de PARCEIROS ficam em
 **`tv_config.py`**. Consultor só ganha tela própria e entra no Top 3 se
 estiver no plano do mês (`config/metas.xlsx`) e não estiver em

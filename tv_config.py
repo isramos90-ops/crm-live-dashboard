@@ -1,7 +1,7 @@
 """
 Configuração da TV / Explorar — quem aparece, com que nome e com que foto.
 Atualizado em 2026-10-08 (plano comercial de outubro, entrada do PV 03 e
-criação do PV 04).
+criação do PV 04, desfeita em 2026-10-16).
 
 Tudo que é "regra de exibição" e não vem do CRM fica aqui, num lugar só:
 
@@ -10,7 +10,7 @@ Tudo que é "regra de exibição" e não vem do CRM fica aqui, num lugar só:
 - EQUIPES: para cada equipe do CRM (nome exato em "Equipes de vendas"):
     label   -> nome mostrado na TV (ex: a equipe "PV03 - EQUIPE CARTEIRA" do
                CRM é a equipe da Daphne, então aparece "EQUIPE DAPHNE")
-    pv      -> força o PV (ex: Equipe Elton virou o PV 04)
+    pv      -> força o PV (nenhuma equipe usa hoje)
     lideres -> fotos mostradas no cabeçalho da tela da equipe
                (ex: Equipe Daphne mostra Daphne + Elvio, o gerente)
 - LOGIN_EQUIPE: força a equipe de um login, quando o plano comercial coloca
@@ -28,15 +28,14 @@ config/hierarquia_usuarios.xlsx tem a foto salva pelo nome do plano
 (ex: amanda-coimbra.jpg) — o fotos.py também tenta casar pelo nome.
 """
 
-TV_PVS = ["PV 02", "PV 03", "PV 04"]
+TV_PVS = ["PV 02", "PV 03"]
 
-PV_SOMENTE_VISAO_GERAL = {"PV 04"}
+PV_SOMENTE_VISAO_GERAL = set()
 
 PV_FOTOS = {
     "PV 01": "fotos/pv/pv-01.jpg",
     "PV 02": "fotos/pv/pv-02.jpg",
     "PV 03": "fotos/pv/pv-03.jpg",
-    "PV 04": "fotos/pv/pv-04.jpg",
 }
 
 EQUIPES = {
@@ -52,13 +51,13 @@ EQUIPES = {
         "label": "EQUIPE ALEXANDRE",
         "lideres": [{"nome": "Alexandre", "cargo": "Supervisor", "foto": "fotos/lideres/alexandre.jpg"}],
     },
-    # Pedido da Isabela em 2026-10-08: o Elton deixa de ser equipe do PV 02
-    # e vira o PV 04 (aparece só na visão geral do PV, fora dos rankings de
-    # consultor).
+    # 2026-10-16 (Isabela): o Elton volta a ser supervisor dentro do PV 02 e
+    # o resultado da equipe dele soma na gestão do PV 02 (o PV 04 deixou de
+    # existir). Ele não tem tela/ranking de consultor (não está no plano
+    # individual), só a da equipe.
     "PV 02 - Equipe Elton": {
         "label": "EQUIPE ELTON",
-        "pv": "PV 04",
-        "lideres": [{"nome": "Elton", "cargo": "Supervisor", "foto": "fotos/pv/pv-04.jpg"}],
+        "lideres": [{"nome": "Elton", "cargo": "Supervisor", "foto": "fotos/lideres/elton.jpg"}],
     },
     "PV03 - EQUIPE CAIO": {
         "label": "EQUIPE CAIO",
