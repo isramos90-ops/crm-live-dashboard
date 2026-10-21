@@ -573,9 +573,14 @@ function rkFotoHtml(foto, nome) {
   return foto ? `<img src="${esc(staticUrl(foto))}" alt="${esc(nome)}">` : esc(initials(nome).toUpperCase());
 }
 
+// Meta fixa por PV no ranking "Melhor PV" (tv_config.RANKING_PV_META):
+// PC igual para todos os PVs (R$ 25.600), pedido da Isabela em 2026-10-21.
+const RANKING_PV_META = {{ ranking_pv_meta | tojson }};
+
 function rkRank(itens, prod) {
   return itens.map(it => {
-    const meta = (it.node.meta || {})[prod.meta] || 0;
+    const fixa = it.ehPv ? RANKING_PV_META[prod.meta] : undefined;
+    const meta = fixa != null ? fixa : ((it.node.meta || {})[prod.meta] || 0);
     const real = ((it.node.revenue || {})[prod.cat] || {})[prod.campo] || 0;
     return { ...it, meta, real, p: meta > 0 ? 100 * real / meta : null };
   }).filter(x => x.p !== null).sort((a, b) => b.p - a.p);
@@ -625,7 +630,7 @@ function renderRankings() {
   if (ABA === 'rankings') cabecalhoRankings();
 
   const pvs = LAST_DATA.periods.month.hierarchy.filter(pv => !pv.somente_visao_geral);
-  const pvItens = pvs.map(pv => ({ node: pv, nome: pv.pv, sub: 'Proprietário', foto: pv.foto }));
+  const pvItens = pvs.map(pv => ({ node: pv, nome: pv.pv, sub: 'Proprietário', foto: pv.foto, ehPv: true }));
   const supItens = [];
   const consItens = [];
   for (const pv of pvs) {

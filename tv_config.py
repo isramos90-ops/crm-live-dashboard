@@ -101,3 +101,12 @@ OCULTAR_DA_TV = {
     "richard.souza@global",
     "alexandre@global",
 }
+
+# Aba Rankings do Explorar (Isabela, 2026-10-21): no ranking "Melhor PV",
+# o PC (meta de Receita Total) é o mesmo para todos os PVs, pra comparar de
+# igual pra igual — o PV 02 tem R$ 32.600 de plano com a Equipe Elton, mas
+# no ranking usa R$ 25.600, igual ao PV 03. Só afeta esse ranking; TV e
+# visão geral continuam com o plano completo.
+RANKING_PV_META = {
+    "RECEITA_TOTAL": 25600,
+}

@@ -482,7 +482,10 @@ def explorar():
     'visão geral' (agregado). Os dados continuam se atualizando sozinhos
     (mesma origem /api/data), só a seleção fica nas mãos de quem está
     olhando (pedido da Isabela em 2026-09-16)."""
-    return render_template("explorar.html", refresh_seconds=REFRESH_SECONDS)
+    return render_template(
+        "explorar.html", refresh_seconds=REFRESH_SECONDS,
+        ranking_pv_meta=tv_config.RANKING_PV_META,
+    )
 
 
 @app.route("/api/data")
