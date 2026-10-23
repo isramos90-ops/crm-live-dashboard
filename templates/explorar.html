@@ -275,6 +275,7 @@ async function fetchData() {
     document.getElementById('hd-updated').textContent = fmtTime(state.updated_at);
     if (state.data) {
       LAST_DATA = state.data;
+      aplicaMetaFixaPv(LAST_DATA);
       rebuildSelectsAndRender();
       renderRankings();
     }
@@ -576,6 +577,30 @@ function rkFotoHtml(foto, nome) {
 // Meta fixa por PV no ranking "Melhor PV" (tv_config.RANKING_PV_META):
 // PC igual para todos os PVs (R$ 25.600), pedido da Isabela em 2026-10-21.
 const RANKING_PV_META = {{ ranking_pv_meta | tojson }};
+
+// 2026-10-23 (Isabela): no Explorar inteiro (visão do PV, Top 3 e
+// Rankings) o PC do PV é o fixo de RANKING_PV_META (R$ 25.600 para todos),
+// e o PDU do PV é recalculado em cima dele. A TV continua com o plano
+// completo vindo do servidor.
+function aplicaMetaFixaPv(data) {
+  for (const per of Object.values(data.periods || {})) {
+    const dias = per.dias_uteis;
+    for (const pv of (per.hierarchy || [])) {
+      pv.meta = Object.assign({}, pv.meta, RANKING_PV_META);
+      if (pv.pdu && dias) {
+        const meta = pv.meta.RECEITA_TOTAL || 0;
+        const real = pv.revenue['RECEITA TOTAL'].receita || 0;
+        const falta = Math.max(0, meta - real);
+        const rest = dias.dias_uteis_restantes;
+        pv.pdu = {
+          pdu_inicial: dias.dias_uteis_totais ? meta / dias.dias_uteis_totais : null,
+          pdu_necessario: rest > 0 ? falta / rest : falta,
+          falta,
+        };
+      }
+    }
+  }
+}
 
 function rkRank(itens, prod) {
   return itens.map(it => {
