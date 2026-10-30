@@ -527,13 +527,26 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
         prods = crm.execute_kw("product.product", "read", [product_ids], {"fields": ["id", "categ_id"]})
         prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
 
+    # CNPJ do cliente (campo "vat" do res.partner) e Vínculo (campo
+    # "client_order_ref" do pedido) — pedido da Isabela em 2026-10-30, pra
+    # auditoria detalhada no Excel.
+    partner_ids = sorted({r["order_partner_id"][0] for r in lines if r.get("order_partner_id")})
+    partner_vat = {}
+    if partner_ids:
+        partners = crm.execute_kw("res.partner", "read", [partner_ids], {"fields": ["id", "vat"]})
+        partner_vat = {p["id"]: p.get("vat") for p in partners}
+
     order_ids = sorted({r["order_id"][0] for r in lines if r.get("order_id")})
     lead_stage_by_order = {}
     lead_dates_by_order = {}
+    order_vinculo = {}
     lookup_erro = None
     if order_ids:
         try:
-            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
+            orders = crm.execute_kw(
+                "sale.order", "read", [order_ids],
+                {"fields": ["id", "opportunity_id", "client_order_ref"]},
+            )
             lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
             lead_stage = {}
             lead_activation = {}
@@ -563,6 +576,7 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
                     "data_ativacao": lead_activation.get(opp_id) if opp_id else None,
                     "data_venda": lead_sale_date.get(opp_id) if opp_id else None,
                 }
+                order_vinculo[o["id"]] = o.get("client_order_ref")
         except Exception as exc:  # noqa: BLE001
             lookup_erro = str(exc)
 
@@ -586,6 +600,8 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
             "supervisor": info["supervisor"] if info else None,
             "consultor": info["nome"] if info else (salesman[1] if salesman else None),
             "cliente": r["order_partner_id"][1] if r.get("order_partner_id") else None,
+            "cnpj": partner_vat.get(r["order_partner_id"][0]) if r.get("order_partner_id") else None,
+            "vinculo": order_vinculo.get(order_id_num),
             "pedido": order_name,
             "create_date": r.get("create_date"),
             "data_ativacao": dates_lead.get("data_ativacao"),
