@@ -528,8 +528,8 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
         prod_categ = {p["id"]: (p["categ_id"][1] if p.get("categ_id") else None) for p in prods}
 
     # CNPJ do cliente (campo "vat" do res.partner) e Vínculo (campo
-    # "client_order_ref" do pedido) — pedido da Isabela em 2026-10-30, pra
-    # auditoria detalhada no Excel.
+    # "operator_vinculo" do crm.lead vinculado ao pedido) — pedido da
+    # Isabela em 2026-10-30, pra auditoria detalhada no Excel.
     partner_ids = sorted({r["order_partner_id"][0] for r in lines if r.get("order_partner_id")})
     partner_vat = {}
     if partner_ids:
@@ -543,14 +543,12 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
     lookup_erro = None
     if order_ids:
         try:
-            orders = crm.execute_kw(
-                "sale.order", "read", [order_ids],
-                {"fields": ["id", "opportunity_id", "client_order_ref"]},
-            )
+            orders = crm.execute_kw("sale.order", "read", [order_ids], {"fields": ["id", "opportunity_id"]})
             lead_ids = sorted({o["opportunity_id"][0] for o in orders if o.get("opportunity_id")})
             lead_stage = {}
             lead_activation = {}
             lead_sale_date = {}
+            lead_vinculo = {}
             if lead_ids:
                 # x_activation_date / x_sale_date são campos customizados do
                 # CRM (confirmados em 2026-09-15) — se algum deles não
@@ -561,13 +559,14 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
                 try:
                     lead_recs = crm.execute_kw(
                         "crm.lead", "read", [lead_ids],
-                        {"fields": ["id", "stage_id", "x_activation_date", "x_sale_date"]},
+                        {"fields": ["id", "stage_id", "x_activation_date", "x_sale_date", "operator_vinculo"]},
                     )
                 except Exception:  # noqa: BLE001
                     lead_recs = crm.execute_kw("crm.lead", "read", [lead_ids], {"fields": ["id", "stage_id"]})
                 lead_stage = {l["id"]: (l["stage_id"][1] if l.get("stage_id") else None) for l in lead_recs}
                 lead_activation = {l["id"]: l.get("x_activation_date") for l in lead_recs}
                 lead_sale_date = {l["id"]: l.get("x_sale_date") for l in lead_recs}
+                lead_vinculo = {l["id"]: l.get("operator_vinculo") for l in lead_recs}
             for o in orders:
                 opp = o.get("opportunity_id")
                 opp_id = opp[0] if opp else None
@@ -576,7 +575,7 @@ Exporta TODAS as linhas de pedido do mês atual (mesmo domínio usado
                     "data_ativacao": lead_activation.get(opp_id) if opp_id else None,
                     "data_venda": lead_sale_date.get(opp_id) if opp_id else None,
                 }
-                order_vinculo[o["id"]] = o.get("client_order_ref")
+                order_vinculo[o["id"]] = lead_vinculo.get(opp_id) if opp_id else None
         except Exception as exc:  # noqa: BLE001
             lookup_erro = str(exc)
 
@@ -770,33 +769,6 @@ def export_pedidos_lista():
         "erro_lookup_lead": lookup_erro,
         "linhas": out,
     })
-
-
-@app.route("/api/_debug_fields")
-def _debug_fields():
-    """TEMP: lista os campos de um modelo do Odoo cujo rótulo contenha um
-    texto (acento-insensível), pra achar o nome técnico de "Vínculo".
-    Uso: /api/_debug_fields?model=sale.order&q=vinc
-    Remover esta rota depois de encontrar o campo certo."""
-    import unicodedata
-    model = request.args.get("model", "sale.order")
-    q = request.args.get("q", "vinc")
-
-    def norm(s):
-        if not s:
-            return ""
-        return "".join(
-            c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
-        ).lower()
-
-    fields = crm.execute_kw(model, "fields_get", [], {"attributes": ["string", "type"]})
-    qn = norm(q)
-    matches = {
-        name: {"string": info.get("string"), "type": info.get("type")}
-        for name, info in fields.items()
-        if qn in norm(info.get("string"))
-    }
-    return jsonify({"model": model, "q": q, "matches": matches, "total_fields": len(fields)})
 
 
 @app.route("/api/debug_pedidos")
