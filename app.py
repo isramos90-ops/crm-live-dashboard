@@ -772,6 +772,33 @@ def export_pedidos_lista():
     })
 
 
+@app.route("/api/_debug_fields")
+def _debug_fields():
+    """TEMP: lista os campos de um modelo do Odoo cujo rótulo contenha um
+    texto (acento-insensível), pra achar o nome técnico de "Vínculo".
+    Uso: /api/_debug_fields?model=sale.order&q=vinc
+    Remover esta rota depois de encontrar o campo certo."""
+    import unicodedata
+    model = request.args.get("model", "sale.order")
+    q = request.args.get("q", "vinc")
+
+    def norm(s):
+        if not s:
+            return ""
+        return "".join(
+            c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
+        ).lower()
+
+    fields = crm.execute_kw(model, "fields_get", [], {"attributes": ["string", "type"]})
+    qn = norm(q)
+    matches = {
+        name: {"string": info.get("string"), "type": info.get("type")}
+        for name, info in fields.items()
+        if qn in norm(info.get("string"))
+    }
+    return jsonify({"model": model, "q": q, "matches": matches, "total_fields": len(fields)})
+
+
 @app.route("/api/debug_pedidos")
 def debug_pedidos():
     """Diagnóstico manual: mostra, pra uma lista de números de pedido
