@@ -377,3 +377,22 @@ consultor).
 - A receita é atribuída pelo vendedor da linha de pedido (`salesman_id`), que pode
   não ser sempre o mesmo consultor dono do lead (`user_id`) — vale confirmar com a
   Isabela se isso é o esperado ou se a atribuição deveria seguir o dono do lead.
+
+## Versão Google Apps Script (sem Railway) — `apps-script/`
+
+Desde 2026-11-10 o painel também roda de graça no Google Apps Script, sem
+servidor: um gatilho de hora em hora busca o CRM, calcula tudo (mesma lógica
+do `app.py`, validada com 0 diferenças contra ele num CRM simulado) e grava um
+JSON no Drive; o link do App da Web mostra as telas (`?p=tv`, `?p=explorar`,
+`?p=painel`).
+
+- `apps-script/Codigo.gs` — único arquivo colado no Apps Script.
+- `apps-script/config.json` e `apps-script/web/*.html` — gerados por
+  `python3 apps-script/build.py` a partir de `config/`, `tv_config.py`,
+  `fotos.py` e `templates/`. O Apps Script baixa esses arquivos do GitHub
+  (cache de 6h; função `limparCache()` força na hora) — então, depois de
+  mexer em config/templates, é só rodar o build e dar push.
+- Lista de pedidos do mês e metas ficam numa planilha Google criada pelo
+  `configurarPainel()` (abas PEDIDOS_MES, METAS_EQUIPES, METAS_USUARIOS).
+- Não tem na versão Apps Script: pôsteres PNG de ranking na TV e os
+  endpoints de exportação (/api/export_*).

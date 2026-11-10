@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel CRM — Consulta por PV / Supervisor / Consultor</title>
+<style>
+  :root {
+    --brand-purple: #660099; --brand-purple-dark: #3d005c; --brand-magenta: #ec008c;
+    --surface-1: #ffffff; --page-plane: #f3eef7; --text-primary: #17131a;
+    --text-secondary: #55505c; --text-muted: #8d8792; --gridline: #e4dfe9; --border: rgba(20,10,25,0.10);
+    --good: #1fa34a; --warn: #f1c40f; --bad: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  header {
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%);
+    color: #fff;
+  }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; overflow: hidden; flex-shrink: 0; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .who h1 { font-size: 18px; margin: 0; }
+  .who .sub { font-size: 12px; color: rgba(255,255,255,0.8); }
+  .brand-logo { background: #fff; border-radius: 8px; padding: 5px 10px; display: flex; align-items: center; }
+  .brand-logo img { height: 24px; display: block; }
+  .status { text-align: right; font-size: 11px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4be36a; margin-right: 5px; box-shadow: 0 0 0 0 rgba(75,227,106,0.6); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(75,227,106,0.6);} 70% { box-shadow: 0 0 0 6px rgba(75,227,106,0);} 100% { box-shadow: 0 0 0 0 rgba(75,227,106,0);} }
+
+  .filtros {
+    padding: 14px 28px; display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--surface-1); border-bottom: 1px solid var(--border);
+  }
+  .campo { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+  .campo label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .campo select {
+    font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; color: var(--text-primary); font-family: inherit;
+  }
+  .campo select:disabled { color: var(--text-muted); background: #f7f5f8; }
+
+  main { padding: 18px 24px 26px; display: grid; grid-template-columns: 1.1fr 1.3fr 0.9fr; gap: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  .meta-principal .pct { font-size: 44px; font-weight: 700; line-height: 1; }
+  .meta-principal .pct.good { color: var(--good); } .meta-principal .pct.warn { color: #b8860b; } .meta-principal .pct.bad { color: var(--bad); }
+  .meta-principal .tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--brand-purple); background: #f2e3fa; padding: 3px 8px; border-radius: 20px; margin-bottom: 8px; }
+  .meter { position: relative; height: 12px; border-radius: 6px; margin: 14px 0 10px;
+    background: linear-gradient(90deg, var(--bad) 0%, var(--bad) 60%, var(--warn) 60%, var(--warn) 85%, var(--good) 85%, var(--good) 100%); }
+  .meter .marker { position: absolute; top: -4px; width: 4px; height: 20px; border-radius: 2px; background: #17131a; }
+  .meta-rows { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .meta-rows b { display: block; font-size: 14px; color: var(--text-primary); }
+  .meta-rows b.falta { color: var(--bad); }
+
+  .status-chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .status-chip {
+    display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-secondary);
+    background: #f7f5f8; border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px 6px 10px;
+  }
+  .status-chip b { font-size: 13px; color: var(--text-primary); font-weight: 700; }
+  .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-chip.concluido .dot { background: var(--good); }
+  .status-chip.tramite .dot { background: var(--warn); }
+
+  .pdu-card .pdu-main { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-top: 6px; }
+  .pdu-card .pdu-destaque { min-width: 150px; }
+  .pdu-card .pdu-destaque .lbl { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pdu-card .pdu-destaque .valor { font-size: 34px; font-weight: 700; color: var(--brand-purple); line-height: 1; }
+  .pdu-card .pdu-destaque .valor.falta { color: var(--bad); }
+  .pdu-card .pdu-secundario {
+    display: flex; gap: 28px; flex-wrap: wrap; flex: 1;
+    padding-left: 24px; border-left: 1px solid var(--gridline); min-width: 260px;
+  }
+  .pdu-card .pdu-secundario div { display: flex; flex-direction: column; gap: 3px; }
+  .pdu-card .pdu-secundario span { font-size: 11px; color: var(--text-secondary); }
+  .pdu-card .pdu-secundario b { font-size: 15px; color: var(--text-primary); }
+
+  .produto-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
+  .produto-tile { text-align: center; }
+  .produto-tile .nome { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .produto-tile .pct { font-size: 22px; font-weight: 700; }
+  .produto-tile .meter { height: 8px; margin: 8px 0 6px; }
+  .produto-tile .meter .marker { height: 14px; top: -3px; width: 3px; }
+  .produto-tile .nums { font-size: 11px; color: var(--text-muted); }
+
+  .mini-gauge { display: flex; align-items: center; gap: 14px; }
+  .mini-gauge .pct { font-size: 30px; font-weight: 700; min-width: 68px; }
+  .mini-gauge .info { flex: 1; }
+  .mini-gauge .meter { margin: 6px 0; }
+  .mini-gauge .nums { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
+
+  .funil-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .funil-box { border-radius: 10px; padding: 12px 14px; color: #fff; }
+  .funil-box .n { font-size: 22px; font-weight: 700; }
+  .funil-box .lbl { font-size: 11px; opacity: 0.9; }
+  .funil-box.proposta { background: var(--brand-purple); }
+  .funil-box.aceite { background: var(--good); }
+  .funil-box.recusada { background: var(--bad); }
+  .funil-box.finalizado { background: var(--brand-magenta); }
+  .funil-note { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+
+  .ranking-podium { display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; padding: 4px 0; gap: 10px; }
+  .ranking-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .ranking-photo { position: relative; }
+  .ranking-photo .circle {
+    border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff; background: var(--brand-purple);
+  }
+  .ranking-photo .circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ranking-photo .medal-badge {
+    position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    font-size: 20px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+  }
+  .rank-1 .circle { width: 92px; height: 92px; font-size: 30px; border: 4px solid #FFD700; }
+  .rank-2 .circle { width: 76px; height: 76px; font-size: 24px; border: 4px solid #C0C0C0; }
+  .rank-3 .circle { width: 68px; height: 68px; font-size: 22px; border: 4px solid #CD7F32; }
+  .ranking-card .nome { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .ranking-card .pct { font-size: 17px; font-weight: 800; color: var(--brand-purple); }
+
+  footer { padding: 10px 24px 18px; text-align: center; font-size: 11px; color: var(--text-muted); }
+  .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+  /* Aba Rankings (2026-10-14, esboço aprovado pela Isabela) */
+  .abas { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--gridline); }
+  .abas button { font: inherit; font-size: 14px; font-weight: 600; color: var(--text-secondary); background: none; border: 0; border-bottom: 3px solid transparent; padding: 14px 16px; cursor: pointer; min-height: 44px; }
+  .abas button[aria-selected="true"] { color: var(--brand-purple); font-weight: 800; border-bottom-color: var(--brand-purple); }
+  #view-rankings { max-width: 1320px; margin: 0 auto; padding: 20px 24px 40px; display: flex; flex-direction: column; gap: 20px; }
+  .rk-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .rk-pills .lbl { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+  .rk-pills button { min-height: 44px; padding: 10px 18px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid #d9cfe2; background: #fff; color: var(--brand-purple-dark); }
+  .rk-pills button[aria-pressed="true"] { background: var(--brand-purple); border-color: var(--brand-purple); color: #fff; }
+  .rk-pills .criterio { flex-basis: 100%; font-size: 12px; color: var(--text-muted); }
+  .rk-secao { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 16px; display: flex; flex-direction: column; gap: 18px; }
+  .rk-secao .topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .rk-secao h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--brand-purple-dark); text-transform: none; letter-spacing: 0; }
+  .rk-secao .legenda { font-size: 12px; color: var(--text-muted); }
+  .rk-podio { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 28px; padding: 6px 0 4px; }
+  .rk-top { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 220px; text-align: center; }
+  .rk-top.p1 { order: 2; padding-bottom: 24px; } .rk-top.p2 { order: 1; } .rk-top.p3 { order: 3; }
+  .rk-foto { position: relative; }
+  .rk-foto .circ { width: 128px; height: 128px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; border: 6px solid #9aa0a6; box-sizing: border-box; }
+  .rk-top.p1 .circ { width: 168px; height: 168px; border-color: #d4a017; font-size: 46px; }
+  .rk-top.p3 .circ { border-color: #b8733a; }
+  .rk-foto .circ img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rk-foto .pos { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); min-width: 44px; padding: 4px 10px; border-radius: 999px; background: #9aa0a6; color: #17131a; font-size: 15px; font-weight: 800; box-sizing: border-box; }
+  .rk-top.p1 .pos { background: #d4a017; } .rk-top.p3 .pos { background: #b8733a; }
+  .rk-top .nome { font-size: 16px; font-weight: 800; margin-top: 6px; }
+  .rk-top .sub, .rk-top .valor { font-size: 12px; color: var(--text-secondary); }
+  .rk-top .pct { font-size: 26px; font-weight: 800; color: var(--brand-purple); }
+  .rk-resto { border-top: 1px solid var(--gridline); display: flex; flex-direction: column; }
+  .rk-resto .lbl { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 0 6px; }
+  .rk-linha { display: grid; grid-template-columns: 36px 44px minmax(0, 1fr) minmax(80px, 260px) 60px; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0ecf3; }
+  .rk-linha .pos { font-size: 15px; font-weight: 800; color: var(--text-muted); text-align: right; }
+  .rk-linha .mini { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .rk-linha .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rk-linha .txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rk-linha .txt b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rk-linha .txt span { font-size: 12px; color: var(--text-secondary); }
+  .rk-barra { height: 8px; border-radius: 4px; background: #eee7f3; overflow: hidden; }
+  .rk-barra div { height: 100%; border-radius: 4px; background: var(--brand-purple); }
+  .rk-barra div.ok { background: var(--good); }
+  .rk-linha .pctl { font-size: 15px; font-weight: 800; color: var(--brand-purple); text-align: right; }
+  .rk-vazio { font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--gridline); padding-top: 12px; }
+  .rk-acao { min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--brand-purple); background: #fff; color: var(--brand-purple); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .rk-acao:hover { background: #f2e3fa; }
+  .rk-acao[disabled] { opacity: .6; cursor: wait; }
+  .rk-acao.forte { background: var(--brand-purple); color: #fff; }
+  .rk-topo-geral { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+  .rk-marca { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 10px; background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%); color: #fff; }
+  .rk-marca b { font-size: 18px; } .rk-marca span { font-size: 12px; opacity: .9; }
+  .rk-marca img { height: 26px; background: #fff; border-radius: 6px; padding: 4px 8px; }
+  .capturando > .rk-marca { display: flex; }
+  .capturando .rk-acao, .capturando .rk-topo-geral { display: none !important; }
+  .capturando { padding: 16px; background: #f3eef7; }
+  @media (max-width: 760px) { .rk-top.p1 { order: 1; padding-bottom: 0; } .rk-top.p2 { order: 2; } }
+  @media (max-width: 640px) { .rk-linha { grid-template-columns: 28px 40px minmax(0, 1fr) 52px; } .rk-barra { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="who">
+    <div class="avatar" id="hd-initials">–</div>
+    <div>
+      <h1 id="hd-nome">Carregando…</h1>
+      <div class="sub" id="hd-cargo"></div>
+    </div>
+  </div>
+  <div class="brand-logo"><img src="https://raw.githubusercontent.com/isramos90-ops/crm-live-dashboard/main/static/logo-grupo-global.png" alt="Grupo Global"></div>
+  <div class="status">
+    <div><span class="live-dot"></span>Atualizando automaticamente</div>
+    <div id="hd-updated"></div>
+    <div>Desenvolvido por Isabela Ramos</div>
+  </div>
+</header>
+
+<nav class="abas" role="tablist" aria-label="Abas do Explorar">
+  <button type="button" role="tab" id="aba-nivel" aria-selected="true" aria-controls="view-nivel">Visão por PV / Supervisor / Consultor</button>
+  <button type="button" role="tab" id="aba-rankings" aria-selected="false" aria-controls="view-rankings">Rankings</button>
+</nav>
+
+<div id="view-nivel" role="tabpanel" aria-labelledby="aba-nivel">
+<div class="filtros">
+  <div class="campo">
+    <label for="sel-pv">PV</label>
+    <select id="sel-pv"></select>
+  </div>
+  <div class="campo">
+    <label for="sel-sup">Supervisor</label>
+    <select id="sel-sup"></select>
+  </div>
+  <div class="campo">
+    <label for="sel-cons">Consultor</label>
+    <select id="sel-cons"></select>
+  </div>
+</div>
+
+<main id="main">
+  <div class="no-data" style="grid-column: span 3;">Carregando dados…</div>
+</main>
+</div>
+
+<section id="view-rankings" role="tabpanel" aria-labelledby="aba-rankings" hidden>
+  <div class="rk-pills" id="rk-pills"></div>
+  <div class="rk-topo-geral">
+    <button type="button" class="rk-acao forte" id="rk-print-tudo">Gerar imagem dos 3 rankings</button>
+  </div>
+  <div id="rk-secoes"><div class="no-data">Carregando dados…</div></div>
+</section>
+
+<footer>Painel CRM · Vivo Empresas · Grupo Global — consulta manual, atualiza os dados sozinho a cada 3600s</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function apiData() {
+  return new Promise(function (resolve, reject) {
+    google.script.run
+      .withSuccessHandler(function (txt) { resolve(JSON.parse(txt)); })
+      .withFailureHandler(reject)
+      .getDataJson();
+  });
+}
+
+const REFRESH_MS = 3600000;
+const STATIC_BASE = "https://raw.githubusercontent.com/isramos90-ops/crm-live-dashboard/main/static/";
+const VALOR_TODOS = "__TODOS__";
+
+function fmtBRL(v) { return (v || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL', maximumFractionDigits:0}); }
+function fmtNum(v) { return (v || 0).toLocaleString('pt-BR'); }
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return 'Última atualização ' + d.toLocaleString('pt-BR', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+}
+function pct(realizado, meta) { return meta > 0 ? (100 * realizado / meta) : null; }
+function pctClass(p) { return p === null ? '' : (p >= 85 ? 'good' : (p >= 60 ? 'warn' : 'bad')); }
+function pctLabel(p) { return p === null ? 'Sem plano' : p.toFixed(0) + '%'; }
+const MEDALS = ['🥇', '🥈', '🥉'];
+function clampPct(p) { return p === null ? 0 : Math.max(0, Math.min(100, p)); }
+function ratio(n, d) { return d > 0 ? (100 * n / d) : 0; }
+function initials(nome) {
+  const parts = (nome || '').trim().split(/\s+/);
+  return ((parts[0]||'')[0] || '') + ((parts[1]||'')[0] || '');
+}
+// Desde 2026-10-08 a foto vem pronta do servidor em cada nó (pv.foto,
+// equipe.foto / equipe.lideres, consultor.foto), casada pelo login do CRM
+// (ver fotos.py e tv_config.py) — mesma regra do /tv.
+function staticUrl(path) { return path ? (STATIC_BASE + path) : null; }
+
+let LAST_DATA = null;
+
+// Seleção atual do usuário — persiste entre atualizações automáticas dos
+// dados, contanto que o PV/Supervisor/Consultor escolhido ainda exista.
+let SEL_PV = null;
+let SEL_SUP = VALOR_TODOS;   // VALOR_TODOS = "visão geral do PV"
+let SEL_CONS = VALOR_TODOS;  // VALOR_TODOS = "visão geral do supervisor"
+
+async function fetchData() {
+  try {
+    const state = await apiData();
+    document.getElementById('hd-updated').textContent = fmtTime(state.updated_at);
+    if (state.data) {
+      LAST_DATA = state.data;
+      aplicaMetaFixaPv(LAST_DATA);
+      rebuildSelectsAndRender();
+      renderRankings();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function populateSelect(sel, options, currentValue) {
+  const prev = sel.value;
+  sel.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  const wanted = currentValue !== undefined ? currentValue : prev;
+  if (wanted && options.some(o => o.value === wanted)) {
+    sel.value = wanted;
+  } else {
+    sel.value = options.length ? options[0].value : '';
+  }
+  return sel.value;
+}
+
+function rebuildSelectsAndRender() {
+  const period = LAST_DATA.periods.month;
+  const hierarchy = period.hierarchy || [];
+  if (!hierarchy.length) {
+    document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Nenhum dado disponível ainda.</div>';
+    return;
+  }
+
+  const selPvEl = document.getElementById('sel-pv');
+  const selSupEl = document.getElementById('sel-sup');
+  const selConsEl = document.getElementById('sel-cons');
+
+  const pvOptions = hierarchy.map(p => ({ value: p.pv, label: p.pv }));
+  SEL_PV = populateSelect(selPvEl, pvOptions, SEL_PV || hierarchy[0].pv);
+
+  const pvNode = hierarchy.find(p => p.pv === SEL_PV) || hierarchy[0];
+
+  const supOptions = [{ value: VALOR_TODOS, label: '— Visão geral do PV —' }]
+    .concat(pvNode.supervisors.map(s => ({ value: s.supervisor, label: s.supervisor })));
+  SEL_SUP = populateSelect(selSupEl, supOptions, SEL_SUP);
+
+  let consOptions = [{ value: VALOR_TODOS, label: '— Visão geral do supervisor —' }];
+  let supNode = null;
+  if (SEL_SUP !== VALOR_TODOS) {
+    supNode = pvNode.supervisors.find(s => s.supervisor === SEL_SUP);
+    if (supNode) {
+      consOptions = consOptions.concat(supNode.consultores.map(c => ({ value: c.nome, label: c.nome_exibicao || c.nome })));
+    }
+    selConsEl.disabled = false;
+  } else {
+    selConsEl.disabled = true;
+  }
+  SEL_CONS = populateSelect(selConsEl, consOptions, SEL_CONS);
+
+  render(pvNode, supNode);
+}
+
+function meterHtml(p, extraClass) {
+  return `<div class="meter ${extraClass||''}"><div class="marker" style="left: calc(${clampPct(p).toFixed(1)}% - 2px)"></div></div>`;
+}
+
+function render(pvNode, supNode) {
+  let node, nivelLabel, subLabel, foto, peers, peerNameKey, isPessoa;
+
+  if (SEL_SUP === VALOR_TODOS || !supNode) {
+    node = pvNode;
+    nivelLabel = pvNode.pv;
+    subLabel = 'Visão geral do PV';
+    // PV 02: mostra a foto do Flávio (proprietário) — pedido da Isabela em
+    // 2026-09-16. Outros PVs continuam sem foto (avatar "PV").
+    foto = staticUrl(pvNode.foto);
+    peers = LAST_DATA.periods.month.hierarchy;
+    peerNameKey = 'pv';
+    isPessoa = !!foto;
+  } else if (SEL_CONS === VALOR_TODOS) {
+    // supNode.supervisor agora é o nome da EQUIPE (ex: "EQUIPE CARTEIRA"),
+    // não uma pessoa — mostra o resultado da equipe nesse nível. Exceção
+    // (pedido da Isabela em 2026-09-16): a Equipe Carteira do PV 02, onde
+    // ela mesma é a supervisora, mostra a foto dela; as demais equipes
+    // continuam com o avatar "EQ".
+    node = supNode;
+    nivelLabel = supNode.supervisor;
+    subLabel = 'PV: ' + pvNode.pv + ' · Visão geral da equipe';
+    foto = staticUrl(supNode.foto);
+    peers = pvNode.supervisors;
+    peerNameKey = 'supervisor';
+    isPessoa = !!foto;
+  } else {
+    const consNode = supNode.consultores.find(c => c.nome === SEL_CONS);
+    if (!consNode) {
+      document.getElementById('main').innerHTML = '<div class="no-data" style="grid-column: span 3;">Consultor não encontrado nesta atualização.</div>';
+      return;
+    }
+    node = consNode;
+    nivelLabel = consNode.nome_exibicao || consNode.nome;
+    subLabel = 'PV: ' + pvNode.pv + ' · ' + supNode.supervisor;
+    foto = staticUrl(consNode.foto);
+    peers = supNode.consultores;
+    peerNameKey = 'nome';
+    isPessoa = true;
+  }
+
+  document.getElementById('hd-nome').textContent = nivelLabel;
+  document.getElementById('hd-cargo').textContent = subLabel;
+  const avatarEl = document.getElementById('hd-initials');
+  if (isPessoa && foto) {
+    avatarEl.innerHTML = `<img src="${foto}" alt="${nivelLabel}">`;
+  } else if (isPessoa) {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = initials(nivelLabel).toUpperCase();
+  } else {
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = (SEL_SUP === VALOR_TODOS || !supNode) ? 'PV' : 'EQ';
+  }
+
+  const realizadoTotal = node.revenue['RECEITA TOTAL'].receita;
+  const metaTotal = node.meta.RECEITA_TOTAL;
+  const pTotal = pct(realizadoTotal, metaTotal);
+  const falta = Math.max(0, metaTotal - realizadoTotal);
+
+  const produtos = [
+    { nome: 'Receita Total', realizado: realizadoTotal, meta: metaTotal, money: true },
+    { nome: 'Renovação', realizado: node.revenue['RENOVAÇÃO'].receita, meta: node.meta.RECEITA_RENOVACAO, money: true },
+    { nome: 'Aparelhos', realizado: node.revenue['APARELHO'].receita, meta: node.meta.RECEITA_APARELHOS, money: true },
+    { nome: 'Banda Larga', realizado: node.revenue['BANDA LARGA'].qtd, meta: node.meta.QUANTIDADE_BL, money: false },
+  ];
+
+  const mailingPct = ratio(node.atendido, node.total);
+
+  const rankingHtml = peers
+    .map(p => ({ nome: (peerNameKey === 'nome' ? (p.nome_exibicao || p.nome) : p[peerNameKey]), foto: staticUrl(p.foto), p: pct(p.revenue['RECEITA TOTAL'].receita, p.meta.RECEITA_TOTAL) }))
+    .filter(p => p.p !== null)
+    .sort((a, b) => b.p - a.p)
+    .slice(0, 3)
+    .map((s, i) => {
+      const foto = s.foto;
+      const fotoHtml = foto ? `<img src="${foto}" alt="${s.nome}">` : initials(s.nome).toUpperCase();
+      return `<div class="ranking-card rank-${i+1}">
+        <div class="ranking-photo">
+          <div class="circle">${fotoHtml}</div>
+          <div class="medal-badge">${MEDALS[i]}</div>
+        </div>
+        <div class="nome">${s.nome}</div>
+        <div class="pct">${pctLabel(s.p)}</div>
+      </div>`;
+    }).join('') || '<div class="funil-note">Ninguém com plano comercial cadastrado ainda.</div>';
+
+  const coberturaPct = ratio(node.aceite_enviado, node.total);
+
+  document.getElementById('main').innerHTML = `
+    <div class="card meta-principal">
+      <span class="tag">★ Indicador principal</span>
+      <h2>Plano Comercial x Realizado (Receita Total)</h2>
+      <div class="pct ${pctClass(pTotal)}">${pctLabel(pTotal)}</div>
+      ${meterHtml(pTotal)}
+      <div class="meta-rows">
+        <div>Plano Comercial<b>${metaTotal > 0 ? fmtBRL(metaTotal) : '—'}</b></div>
+        <div>Realizado<b>${fmtBRL(realizadoTotal)}</b></div>
+        <div>Falta bater<b class="falta">${metaTotal > 0 ? fmtBRL(falta) : '—'}</b></div>
+      </div>
+      <div class="status-chips">
+        <span class="status-chip concluido"><span class="dot"></span>Concluída <b>${fmtBRL(node.receita_total_status.concluido)}</b></span>
+        <span class="status-chip tramite"><span class="dot"></span>Em Trâmite <b>${fmtBRL(node.receita_total_status.em_tramite)}</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Plano Comercial por produto</h2>
+      <div class="produto-grid">
+        ${produtos.map(p => {
+          const pp = pct(p.realizado, p.meta);
+          return `<div class="produto-tile">
+            <div class="nome">${p.nome}</div>
+            <div class="pct ${pctClass(pp)}">${pctLabel(pp)}</div>
+            ${meterHtml(pp)}
+            <div class="nums">${p.money ? fmtBRL(p.meta) : fmtNum(p.meta)} plano · ${p.money ? fmtBRL(p.realizado) : fmtNum(p.realizado)} real.</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <h2 style="margin-top:18px">CRM · Atendimentos</h2>
+      <div class="mini-gauge">
+        <div class="pct ${pctClass(mailingPct)}">${mailingPct.toFixed(0)}%</div>
+        <div class="info">
+          ${meterHtml(mailingPct)}
+          <div class="nums"><span>${fmtNum(node.atendido)} atendidos</span><span>${fmtNum(node.total)} leads no mês</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-row: span 2;">
+      <h2>Plano Comercial x Realizado — Top 3</h2>
+      <div class="ranking-podium">${rankingHtml}</div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <h2>Funil de vendas (mês)</h2>
+      <div class="funil-grid">
+        <div class="funil-box proposta"><div class="n">${fmtNum(node.proposta_enviada)}</div><div class="lbl">Proposta enviada</div></div>
+        <div class="funil-box aceite"><div class="n">${fmtNum(node.aceite_enviado)}</div><div class="lbl">Aceite enviado</div></div>
+        <div class="funil-box recusada"><div class="n">${fmtNum(node.proposta_recusada)}</div><div class="lbl">Proposta recusada</div></div>
+        <div class="funil-box finalizado"><div class="n">${fmtNum(node.concluido)}</div><div class="lbl">Finalizado</div></div>
+      </div>
+      <div class="funil-note">Cobertura de carteira: ${fmtNum(node.aceite_enviado)} fechados de ${fmtNum(node.total)} leads (${coberturaPct.toFixed(1)}%) · ${fmtNum(node.atendido)} atendidos no total.</div>
+    </div>
+
+    ${pduHtml(node.pdu, LAST_DATA.periods.month.dias_uteis)}
+  `;
+}
+
+// PDU (Produção por Dia Útil, pedido da Isabela em 2026-09-17): plano
+// comercial (Receita Total) dividido pelos dias úteis do mês; conforme os
+// dias passam, o que falta bater é redividido pelos dias úteis que ainda
+// restam, então esse número sobe ou desce de acordo com o ritmo real.
+function pduHtml(pdu, dias) {
+  if (!pdu || !dias) return '';
+  return `<div class="card pdu-card" style="grid-column: span 3;">
+    <span class="tag">📅 PDU — Produção por Dia Útil</span>
+    <h2>Ritmo necessário por dia útil (Receita Total)</h2>
+    <div class="pdu-main">
+      <div class="pdu-destaque">
+        <div class="lbl">PDU necessário agora</div>
+        <div class="valor ${pdu.falta > 0 ? 'falta' : ''}">${fmtBRL(pdu.pdu_necessario)}</div>
+      </div>
+      <div class="pdu-secundario">
+        <div><span>PDU inicial (plano ÷ dias úteis)</span><b>${pdu.pdu_inicial != null ? fmtBRL(pdu.pdu_inicial) : '—'}</b></div>
+        <div><span>Falta bater no mês</span><b>${fmtBRL(pdu.falta)}</b></div>
+        <div><span>Dias úteis restantes</span><b>${dias.dias_uteis_restantes} de ${dias.dias_uteis_totais}</b></div>
+      </div>
+    </div>
+    <div class="funil-note">
+      Mês: ${dias.inicio.split('-').reverse().join('/')} a ${dias.fim.split('-').reverse().join('/')} ·
+      ${dias.dias_uteis_decorridos} de ${dias.dias_uteis_totais} dias úteis já passaram ·
+      faltam ${dias.dias_uteis_restantes} dias úteis.
+    </div>
+  </div>`;
+}
+
+document.getElementById('sel-pv').addEventListener('change', (e) => {
+  SEL_PV = e.target.value; SEL_SUP = VALOR_TODOS; SEL_CONS = VALOR_TODOS;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-sup').addEventListener('change', (e) => {
+  SEL_SUP = e.target.value; SEL_CONS = VALOR_TODOS;
+  rebuildSelectsAndRender();
+});
+document.getElementById('sel-cons').addEventListener('change', (e) => {
+  SEL_CONS = e.target.value;
+  rebuildSelectsAndRender();
+});
+
+
+// ------------------------------------------------------------------
+// Aba Rankings (2026-10-14, esboço aprovado pela Isabela): melhor PV,
+// supervisor/equipe e consultor por produto (PC entregue = Receita Total,
+// Banda Larga, Renovação, Aparelhos). Ordem = % do plano batido; quem não
+// tem plano naquele produto não entra. Top 3 com foto grande, resto em
+// lista com foto pequena. PVs "somente visão geral" (PV 04) ficam fora;
+// consultores só os do plano do mês (exibir_tv, mesma regra da TV).
+// ------------------------------------------------------------------
+const RK_PRODUTOS = [
+  { key: 'pc', label: 'PC entregue (Receita Total)', cat: 'RECEITA TOTAL', campo: 'receita', meta: 'RECEITA_TOTAL', money: true },
+  { key: 'bl', label: 'Banda Larga', cat: 'BANDA LARGA', campo: 'qtd', meta: 'QUANTIDADE_BL', money: false },
+  { key: 'renov', label: 'Renovação', cat: 'RENOVAÇÃO', campo: 'receita', meta: 'RECEITA_RENOVACAO', money: true },
+  { key: 'apar', label: 'Aparelhos', cat: 'APARELHO', campo: 'receita', meta: 'RECEITA_APARELHOS', money: true },
+];
+let RK_PROD = 'pc';
+let ABA = 'nivel';
+try { RK_PROD = localStorage.getItem('rk_prod') || 'pc'; ABA = localStorage.getItem('explorar_aba') || 'nivel'; } catch (e) {}
+if (!RK_PRODUTOS.some(p => p.key === RK_PROD)) RK_PROD = 'pc';
+
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function setAba(aba) {
+  ABA = aba;
+  try { localStorage.setItem('explorar_aba', aba); } catch (e) {}
+  const rk = aba === 'rankings';
+  document.getElementById('aba-nivel').setAttribute('aria-selected', String(!rk));
+  document.getElementById('aba-rankings').setAttribute('aria-selected', String(rk));
+  document.getElementById('view-nivel').hidden = rk;
+  document.getElementById('view-rankings').hidden = !rk;
+  if (rk) { cabecalhoRankings(); renderRankings(); }
+  else if (LAST_DATA) rebuildSelectsAndRender();
+}
+document.getElementById('aba-nivel').addEventListener('click', () => setAba('nivel'));
+document.getElementById('aba-rankings').addEventListener('click', () => setAba('rankings'));
+
+function cabecalhoRankings() {
+  const per = LAST_DATA ? LAST_DATA.periods.month.label : '';
+  document.getElementById('hd-nome').textContent = 'Rankings do mês';
+  document.getElementById('hd-cargo').textContent = (per ? per + ' · ' : '') + 'todos os PVs';
+  const av = document.getElementById('hd-initials');
+  av.innerHTML = ''; av.textContent = '🏆';
+}
+
+function rkFotoHtml(foto, nome) {
+  return foto ? `<img src="${esc(staticUrl(foto))}" alt="${esc(nome)}">` : esc(initials(nome).toUpperCase());
+}
+
+// Meta fixa por PV no ranking "Melhor PV" (tv_config.RANKING_PV_META):
+// PC igual para todos os PVs (R$ 25.600), pedido da Isabela em 2026-10-21.
+const RANKING_PV_META = {"RECEITA_TOTAL": 25600};
+
+// 2026-10-23 (Isabela): no Explorar inteiro (visão do PV, Top 3 e
+// Rankings) o PC do PV é o fixo de RANKING_PV_META (R$ 25.600 para todos),
+// e o PDU do PV é recalculado em cima dele. A TV continua com o plano
+// completo vindo do servidor.
+function aplicaMetaFixaPv(data) {
+  for (const per of Object.values(data.periods || {})) {
+    const dias = per.dias_uteis;
+    for (const pv of (per.hierarchy || [])) {
+      pv.meta = Object.assign({}, pv.meta, RANKING_PV_META);
+      if (pv.pdu && dias) {
+        const meta = pv.meta.RECEITA_TOTAL || 0;
+        const real = pv.revenue['RECEITA TOTAL'].receita || 0;
+        const falta = Math.max(0, meta - real);
+        const rest = dias.dias_uteis_restantes;
+        pv.pdu = {
+          pdu_inicial: dias.dias_uteis_totais ? meta / dias.dias_uteis_totais : null,
+          pdu_necessario: rest > 0 ? falta / rest : falta,
+          falta,
+        };
+      }
+    }
+  }
+}
+
+function rkRank(itens, prod) {
+  return itens.map(it => {
+    const fixa = it.ehPv ? RANKING_PV_META[prod.meta] : undefined;
+    const meta = fixa != null ? fixa : ((it.node.meta || {})[prod.meta] || 0);
+    const real = ((it.node.revenue || {})[prod.cat] || {})[prod.campo] || 0;
+    return { ...it, meta, real, p: meta > 0 ? 100 * real / meta : null };
+  }).filter(x => x.p !== null).sort((a, b) => b.p - a.p);
+}
+
+function rkValor(x, prod) {
+  return prod.money ? `${fmtBRL(x.real)} de ${fmtBRL(x.meta)}` : `${fmtNum(x.real)} de ${fmtNum(x.meta)} BL`;
+}
+
+function rkSecao(titulo, legenda, itens, prod, vazioMsg) {
+  const r = rkRank(itens, prod);
+  const marca = rkMarcaHtml();
+  const acao = `<button type="button" class="rk-acao" data-print="${esc(titulo)}">Gerar imagem</button>`;
+  if (!r.length) return `<section class="rk-secao">${marca}<div class="topo"><h2>${esc(titulo)}</h2></div><div class="rk-vazio">Ninguém com plano em ${esc(prod.label)} ainda.</div></section>`;
+  const podio = r.slice(0, 3).map((x, i) => `
+    <div class="rk-top p${i + 1}">
+      <div class="rk-foto"><div class="circ">${rkFotoHtml(x.foto, x.nome)}</div><span class="pos">${i + 1}º</span></div>
+      <span class="nome">${esc(x.nome)}</span>
+      <span class="sub">${esc(x.sub)}</span>
+      <span class="pct">${x.p.toFixed(0)}%</span>
+      <span class="valor">${rkValor(x, prod)}</span>
+    </div>`).join('');
+  const resto = r.slice(3);
+  const restoHtml = resto.length ? `<div class="rk-resto"><span class="lbl">Demais colocados</span>${resto.map((x, i) => `
+    <div class="rk-linha">
+      <span class="pos">${i + 4}º</span>
+      <div class="mini">${rkFotoHtml(x.foto, x.nome)}</div>
+      <div class="txt"><b>${esc(x.nome)}</b><span>${esc(x.sub)} · ${rkValor(x, prod)}</span></div>
+      <div class="rk-barra"><div class="${x.p >= 100 ? 'ok' : ''}" style="width:${Math.min(100, x.p).toFixed(1)}%"></div></div>
+      <span class="pctl">${x.p.toFixed(0)}%</span>
+    </div>`).join('')}</div>` : `<div class="rk-vazio">${esc(vazioMsg)}</div>`;
+  return `<section class="rk-secao">${marca}<div class="topo"><h2>${esc(titulo)}</h2><span class="legenda">${esc(legenda)}</span>${acao}</div><div class="rk-podio">${podio}</div>${restoHtml}</section>`;
+}
+
+function renderRankings() {
+  const pillsEl = document.getElementById('rk-pills');
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  pillsEl.innerHTML = '<span class="lbl">Ranking por</span>' + RK_PRODUTOS.map(p =>
+    `<button type="button" data-prod="${p.key}" aria-pressed="${p.key === RK_PROD}">${esc(p.label)}</button>`).join('') +
+    `<span class="criterio">Ordem: % do plano batido em ${esc(prod.key === 'pc' ? 'Receita Total (PC entregue)' : prod.label)}. Quem não tem plano nesse produto não entra no ranking.</span>`;
+  pillsEl.querySelectorAll('button[data-prod]').forEach(b => b.addEventListener('click', () => {
+    RK_PROD = b.dataset.prod;
+    try { localStorage.setItem('rk_prod', RK_PROD); } catch (e) {}
+    renderRankings();
+  }));
+  if (!LAST_DATA) return;
+  if (ABA === 'rankings') cabecalhoRankings();
+
+  const pvs = LAST_DATA.periods.month.hierarchy.filter(pv => !pv.somente_visao_geral);
+  const pvItens = pvs.map(pv => ({ node: pv, nome: pv.pv, sub: 'Proprietário', foto: pv.foto, ehPv: true }));
+  const supItens = [];
+  const consItens = [];
+  for (const pv of pvs) {
+    for (const sup of pv.supervisors) {
+      const lid = (sup.lideres || [])[0];
+      const equipe = sup.supervisor.replace(/^EQUIPE\s+/i, 'Equipe ').replace(/\B\w+/g, w => w.toLowerCase());
+      supItens.push({ node: sup, nome: equipe, sub: pv.pv + (lid ? ' · ' + lid.cargo + ' ' + lid.nome : ''), foto: sup.foto });
+      for (const c of sup.consultores) {
+        if (!c.exibir_tv) continue;
+        consItens.push({ node: c, nome: c.nome_exibicao || c.nome, sub: pv.pv + ' · ' + equipe, foto: c.foto });
+      }
+    }
+  }
+  document.getElementById('rk-secoes').innerHTML = rkMarcaHtml() +
+    rkSecao('Melhor PV · ' + prod.label, 'Foto do proprietário', pvItens, prod, 'Todos os PVs já aparecem no pódio.') +
+    rkSecao('Melhor supervisor · ' + prod.label, 'Resultado da equipe · com o PV de cada uma', supItens, prod, 'Todas as equipes já aparecem no pódio.') +
+    rkSecao('Melhor consultor · ' + prod.label, 'Só consultores do plano do mês · com PV e equipe', consItens, prod, 'Todos os consultores já aparecem no pódio.');
+}
+if (ABA === 'rankings') setAba('rankings');
+
+// ------------------------------------------------------------------
+// "Print" para o grupo dos consultores (2026-10-14): gera uma imagem PNG
+// do ranking (uma seção ou os 3 juntos), com faixa Grupo Global + mês.
+// No celular abre o compartilhar (WhatsApp); no computador baixa o arquivo.
+// ------------------------------------------------------------------
+function rkMarcaHtml() {
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  const per = LAST_DATA ? LAST_DATA.periods.month.label : '';
+  const agora = new Date().toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  return `<div class="rk-marca"><div><b>Rankings ${esc(per)} · ${esc(prod.label)}</b><br><span>Atualizado em ${esc(agora)} · % do plano batido</span></div><img src="https://raw.githubusercontent.com/isramos90-ops/crm-live-dashboard/main/static/logo-grupo-global.png" alt="Grupo Global"></div>`;
+}
+function rkNomeArquivo(t) {
+  return ('ranking-' + t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+async function rkCapturar(el, nome, botao) {
+  if (typeof html2canvas !== 'function') { alertaRk('Não consegui carregar o gerador de imagem. Atualize a página e tente de novo.'); return; }
+  const txt = botao.textContent; botao.disabled = true; botao.textContent = 'Gerando…';
+  el.classList.add('capturando');
+  try {
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#f3eef7', useCORS: true, logging: false });
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file = new File([blob], nome + '.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Rankings Grupo Global' }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nome + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } finally {
+    el.classList.remove('capturando'); botao.disabled = false; botao.textContent = txt;
+  }
+}
+function alertaRk(msg) {
+  const d = document.createElement('div'); d.className = 'no-data'; d.textContent = msg;
+  document.getElementById('rk-secoes').prepend(d); setTimeout(() => d.remove(), 6000);
+}
+document.getElementById('rk-secoes').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-print]'); if (!b) return;
+  rkCapturar(b.closest('.rk-secao'), rkNomeArquivo(b.dataset.print), b);
+});
+document.getElementById('rk-print-tudo').addEventListener('click', (ev) => {
+  const prod = RK_PRODUTOS.find(p => p.key === RK_PROD);
+  rkCapturar(document.getElementById('rk-secoes'), rkNomeArquivo(prod.label), ev.currentTarget);
+});
+
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+</body>
+</html>

@@ -1,0 +1,2117 @@
+{
+ "corte_mes": {
+  "2026-09": 29
+ },
+ "excluded_from_pv_total": [],
+ "feriados": [
+  "2026-01-01",
+  "2026-02-16",
+  "2026-02-17",
+  "2026-04-03",
+  "2026-04-21",
+  "2026-05-01",
+  "2026-06-04",
+  "2026-09-07",
+  "2026-10-12",
+  "2026-11-02",
+  "2026-11-15",
+  "2026-11-20",
+  "2026-12-25",
+  "2027-01-01",
+  "2027-02-08",
+  "2027-02-09",
+  "2027-03-26",
+  "2027-04-21",
+  "2027-05-01",
+  "2027-05-27",
+  "2027-09-07",
+  "2027-10-12",
+  "2027-11-02",
+  "2027-11-15",
+  "2027-11-20",
+  "2027-12-25"
+ ],
+ "hierarchy_by_login": {
+  "adriene.avelino@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/adriene.avelino.jpg",
+   "login": "adriene.avelino@global",
+   "nome": "ADRIENE DA SILVA AVELINO",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "agnes.reis@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/agnes.reis.jpg",
+   "login": "agnes.reis@global",
+   "nome": "Agnes Reis",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "alan.alvarenga@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": null,
+   "login": "alan.alvarenga@global",
+   "nome": "Alan Alvarenga",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "alexandre@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": null,
+   "login": "alexandre@global",
+   "nome": "Alexandre Ornellas",
+   "nome_exibicao": null,
+   "ocultar_da_tv": true,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "aline.cristina@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/aline.cristina.jpg",
+   "login": "aline.cristina@global",
+   "nome": "aline cristina",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "ana.oliveira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/ana.oliveira.jpg",
+   "login": "ana.oliveira@global",
+   "nome": "Ana Clara Oliveira",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "anderson.gomes@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/anderson.gomes.jpg",
+   "login": "anderson.gomes@global",
+   "nome": "Anderson Gomes",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "beatriz.mendes@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/beatriz.mendes.jpg",
+   "login": "beatriz.mendes@global",
+   "nome": "Beatriz Mendes",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "bi@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": null,
+   "login": "bi@global",
+   "nome": "Isabela Ramos",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "bruno.couto@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": null,
+   "login": "bruno.couto@global",
+   "nome": "Bruno Couto",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "bruno.jose@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/bruno.jose.jpg",
+   "login": "bruno.jose@global",
+   "nome": "Bruno Jose da Costa Martins Barbosa",
+   "nome_exibicao": "Bruno Martins",
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "caio.vinaud@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CAIO",
+   "foto": null,
+   "login": "caio.vinaud@grupoglobal.net.br",
+   "nome": "Caio Vinaud",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CAIO"
+  },
+  "cauany.santos@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CAIO",
+   "foto": "fotos/pessoas/cauany.santos.jpg",
+   "login": "cauany.santos@grupoglobal.net.br",
+   "nome": "cauany.santos@grupoglobal.net.br",
+   "nome_exibicao": "Cauany Santos",
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CAIO"
+  },
+  "cecilia.santos@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/cecilia.santos.jpg",
+   "login": "cecilia.santos@global",
+   "nome": "CECILIA MARIA ROCHA DOS SANTOS",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "cindy.rodrigues@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": null,
+   "login": "cindy.rodrigues@global",
+   "nome": "Cindy Kelly Cesario Rodrigues",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "daniele.rodrigues@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/daniele.rodrigues.jpg",
+   "login": "daniele.rodrigues@global",
+   "nome": "Daniele Rodrigues de Lima Centini",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "daphne.ferreira@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": null,
+   "login": "daphne.ferreira@grupoglobal.net.br",
+   "nome": "Daphne Ferreira",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "denia.marcia@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/denia.marcia.jpg",
+   "login": "denia.marcia@global",
+   "nome": "Denia Marica",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "denise@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/denise.jpg",
+   "login": "denise@global",
+   "nome": "Denise Spindola",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "diego.felix@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": null,
+   "login": "diego.felix@global",
+   "nome": "Diego Vieira Felix",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "elder.brito@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/elder.brito.jpg",
+   "login": "elder.brito@global",
+   "nome": "Elder Brito",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "elton@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Elton",
+   "foto": null,
+   "login": "elton@global",
+   "nome": "Elton Bitencourt",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ELTON"
+  },
+  "elvio@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": null,
+   "login": "elvio@global",
+   "nome": "Elvio Jose de Alvarenga",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": true,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "evelyn.amanda@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/evelyn.amanda.jpg",
+   "login": "evelyn.amanda@global",
+   "nome": "Evelyn Amanda Nogueira Roberto",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "fernanda.valente@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/fernanda.valente.jpg",
+   "login": "fernanda.valente@global",
+   "nome": "Fernanda Valente",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "flavio.manoel@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/flavio.manoel.jpg",
+   "login": "flavio.manoel@global",
+   "nome": "Flavio Manoel",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "gilvany@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/gilvany.jpg",
+   "login": "gilvany@global",
+   "nome": "Gilvany Caixeta",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "gustavo.teixeira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/gustavo.teixeira.jpg",
+   "login": "gustavo.teixeira@global",
+   "nome": "Gustavo Teixeira",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "isadora.jesus@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/isadora.jesus.jpg",
+   "login": "isadora.jesus@global",
+   "nome": "ISADORA JESUS",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "isaias.cruz@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": "fotos/pessoas/isaias.cruz.jpg",
+   "login": "isaias.cruz@global",
+   "nome": "Isaias da Cruz",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "juliana.oliveira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/juliana.oliveira.jpg",
+   "login": "juliana.oliveira@global",
+   "nome": "Juliana Oliveira Batista",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "kauan@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/kauan.jpg",
+   "login": "kauan@global",
+   "nome": "Kauan Oliveira",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "larissa.menezes@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CAIO",
+   "foto": "fotos/pessoas/larissa.menezes.jpg",
+   "login": "larissa.menezes@grupoglobal.net.br",
+   "nome": "Larissa Menezes",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CAIO"
+  },
+  "larissahonorio@grupoglobal": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/larissahonorio.jpg",
+   "login": "larissahonorio@grupoglobal",
+   "nome": "LARISSA HONORIO RODRIGUES AZEVEDO",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "leticia.santos@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": null,
+   "login": "leticia.santos@global",
+   "nome": "Leticia Santos",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  },
+  "lorrayne.martins@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/lorrayne.martins.jpg",
+   "login": "lorrayne.martins@global",
+   "nome": "Lorrayne Martins",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "lucas.rodrigues@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/lucas.rodrigues.jpg",
+   "login": "lucas.rodrigues@global",
+   "nome": "Lucas Rodrigues",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "ludmila.assis@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CAIO",
+   "foto": "fotos/pessoas/ludmila.assis.jpg",
+   "login": "ludmila.assis@grupoglobal.net.br",
+   "nome": "ludmila assis",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CAIO"
+  },
+  "marcos.lima@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": null,
+   "login": "marcos.lima@global",
+   "nome": "Marcos Lima",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "marlice.andrade@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": "fotos/pessoas/marlice.andrade.jpg",
+   "login": "marlice.andrade@global",
+   "nome": "Marlice Andrade",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "nathalia.reis@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Alexandre",
+   "foto": null,
+   "login": "nathalia.reis@global",
+   "nome": "Nathalia Cristina dos Reis",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE ALEXANDRE"
+  },
+  "rafaela.casagrande@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/rafaela.casagrande.jpg",
+   "login": "rafaela.casagrande@global",
+   "nome": "Rafaela Casagrande",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "rafaela.martins@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": null,
+   "login": "rafaela.martins@global",
+   "nome": "Rafaela Martins",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "rafaela.oliveira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/rafaela.oliveira.jpg",
+   "login": "rafaela.oliveira@global",
+   "nome": "RAFAELA CRISTINA OLIVEIRA",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "richard.souza@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": null,
+   "login": "richard.souza@global",
+   "nome": "RICHARD OLIVEIRA DE SOUZA",
+   "nome_exibicao": null,
+   "ocultar_da_tv": true,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "sarah.alves@grupoglobal.net.br": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CAIO",
+   "foto": "fotos/pessoas/sarah.alves.jpg",
+   "login": "sarah.alves@grupoglobal.net.br",
+   "nome": "sarah alves",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CAIO"
+  },
+  "suellen.ferreira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE MARCOS",
+   "foto": "fotos/pessoas/suellen.ferreira.jpg",
+   "login": "suellen.ferreira@global",
+   "nome": "Suellen",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE MARCOS"
+  },
+  "tatiane.paula@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Carteira",
+   "foto": "fotos/pessoas/tatiane.paula.jpg",
+   "login": "tatiane.paula@global",
+   "nome": "Tatiane Paula",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE CARTEIRA"
+  },
+  "vanessa.lima@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/vanessa.lima.jpg",
+   "login": "vanessa.lima@global",
+   "nome": "VANESSA",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "vinicius.oliveira@global": {
+   "conta_no_pv": true,
+   "equipe": "PV 02 - Equipe Richard",
+   "foto": "fotos/pessoas/vinicius.oliveira.jpg",
+   "login": "vinicius.oliveira@global",
+   "nome": "VINICIUS OLIVEIRA DA SILVA",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 02",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE RICHARD"
+  },
+  "yasmim.halley@global": {
+   "conta_no_pv": true,
+   "equipe": "PV03 - EQUIPE CARTEIRA",
+   "foto": null,
+   "login": "yasmim.halley@global",
+   "nome": "Yasmim Halley",
+   "nome_exibicao": null,
+   "ocultar_da_tv": false,
+   "pv": "PV 03",
+   "so_resultado_do_pv": false,
+   "supervisor": "EQUIPE DAPHNE"
+  }
+ },
+ "metas_equipes_padrao": [
+  [
+   "PV 02 - Equipe Carteira",
+   8600.0,
+   12.0,
+   10200.0,
+   60000.0
+  ],
+  [
+   "PV 02 - Equipe Richard",
+   8500.0,
+   16.0,
+   11900.0,
+   70000.0
+  ],
+  [
+   "PV 02 - Equipe Alexandre",
+   8500.0,
+   12.0,
+   10000.0,
+   40000.0
+  ],
+  [
+   "PV 02 - Equipe Elton",
+   7000.0,
+   10.0,
+   0.0,
+   10000.0
+  ],
+  [
+   "PV03 - EQUIPE CAIO",
+   3800.0,
+   10.0,
+   8370.0,
+   44400.0
+  ],
+  [
+   "PV03 - EQUIPE CARTEIRA",
+   12500.0,
+   13.0,
+   11160.0,
+   59200.0
+  ],
+  [
+   "PV03 - EQUIPE MARCOS",
+   9300.0,
+   17.0,
+   12555.0,
+   66600.0
+  ]
+ ],
+ "metas_fields": [
+  "RECEITA_TOTAL",
+  "QUANTIDADE_BL",
+  "RECEITA_RENOVACAO",
+  "RECEITA_APARELHOS"
+ ],
+ "metas_usuarios_padrao": [
+  [
+   "ADRIENE DA SILVA AVELINO",
+   1600.0,
+   2.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Daniele Rodrigues de Lima Centini",
+   2000.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "ISADORA JESUS",
+   800.0,
+   1.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Juliana Oliveira Batista",
+   1300.0,
+   2.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Kauan Oliveira",
+   1900.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Tatiane Paula",
+   1000.0,
+   1.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Beatriz Mendes",
+   700.0,
+   1.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "CECILIA MARIA ROCHA DOS SANTOS",
+   1000.0,
+   1.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Gilvany Caixeta",
+   1550.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Lucas Rodrigues",
+   700.0,
+   2.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "RAFAELA CRISTINA OLIVEIRA",
+   1000.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "RICHARD OLIVEIRA DE SOUZA",
+   500.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   "VANESSA",
+   1550.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "VINICIUS OLIVEIRA DA SILVA",
+   1500.0,
+   3.0,
+   1700.0,
+   10000.0
+  ],
+  [
+   "Agnes Reis",
+   1200.0,
+   2.0,
+   1350.0,
+   6000.0
+  ],
+  [
+   "Anderson Gomes",
+   2400.0,
+   2.0,
+   2600.0,
+   8000.0
+  ],
+  [
+   "Alexandre Ornellas",
+   1000.0,
+   2.0,
+   0.0,
+   0.0
+  ],
+  [
+   "Elder Brito",
+   1300.0,
+   1.0,
+   2800.0,
+   8000.0
+  ],
+  [
+   "Evelyn Amanda Nogueira Roberto",
+   750.0,
+   1.0,
+   1100.0,
+   6000.0
+  ],
+  [
+   "LARISSA HONORIO RODRIGUES AZEVEDO",
+   750.0,
+   2.0,
+   800.0,
+   4000.0
+  ],
+  [
+   "Marlice Andrade",
+   1100.0,
+   2.0,
+   1350.0,
+   8000.0
+  ],
+  [
+   "ANA PAULA",
+   500.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "ARTHUR",
+   500.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "cauany.santos@grupoglobal.net.br",
+   700.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Larissa Menezes",
+   700.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "ludmila assis",
+   700.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "sarah alves",
+   700.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "aline cristina",
+   2000.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "ANA PAULA GOMES COSTA",
+   1000.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Bruno Jose da Costa Martins Barbosa",
+   2000.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Denise Spindola",
+   1800.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Fernanda Valente",
+   2000.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Flavio Manoel",
+   1600.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Isaias da Cruz",
+   1600.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "ANA FLAVIA",
+   500.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Ana Clara Oliveira",
+   2000.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Denia Marica",
+   1600.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Gustavo Teixeira",
+   1200.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Lorrayne Martins",
+   1000.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Rafaela Casagrande",
+   1000.0,
+   5.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "Suellen",
+   1000.0,
+   2.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "BIANCA",
+   500.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "MARCOS VINICIUS",
+   500.0,
+   1.0,
+   1395.0,
+   7400.0
+  ],
+  [
+   "AMANDA COIMBRA",
+   500.0,
+   1.0,
+   1395.0,
+   7400.0
+  ]
+ ],
+ "miscategorized_as_banda_larga": [
+  "CHIP DE DADOS 100GB"
+ ],
+ "non_movement_stages": [
+  "AGUARDANDO INTERACAO",
+  "ATUALIZACOES POR ROBO",
+  "CLIENTE JA RENOVADO",
+  "CORRECAO CONSULTOR",
+  "TENTATIVA DE CONTATO"
+ ],
+ "prod_sets": {
+  "APARELHO": [
+   "ALL / EQUIPAMENTO",
+   "ALL / FIXA AVANCADA - APARELHOS",
+   "ALL / MOVEL - ACESSORIO",
+   "ALL / MOVEL - APARELHO"
+  ],
+  "BANDA LARGA": [
+   "ALL / FIXA BASICA - DADOS",
+   "ALL / FIXA BASICA PF - DADOS"
+  ],
+  "RECEITA TOTAL": [
+   "ALL / FIXA AVANCADA - DADOS",
+   "ALL / FIXA AVANCADA - VOZ",
+   "ALL / FIXA BASICA - DADOS",
+   "ALL / FIXA BASICA - TV",
+   "ALL / FIXA BASICA - VOZ",
+   "ALL / FIXA BASICA PF - DADOS",
+   "ALL / FIXA BASICA PF - VOZ",
+   "ALL / FIXA BASICA PF SVA",
+   "ALL / FIXA BASICA SVA",
+   "ALL / GOOGLE",
+   "ALL / MDM",
+   "ALL / MOVEL - ALTA DADOS",
+   "ALL / MOVEL - M2M",
+   "ALL / MOVEL - MODEM",
+   "ALL / MOVEL - PACOTE DE DADOS",
+   "ALL / MOVEL - PACOTE DE SMS",
+   "ALL / MOVEL - SVA",
+   "ALL / MOVEL - VOZ",
+   "ALL / MOVEL PF - VOZ",
+   "ALL / OFFICE",
+   "ALL / TI",
+   "ALL / VIVO TECH",
+   "ALL / VIVO TRAVEL",
+   "ALL / VIVO VOZ NEGOCIO"
+  ],
+  "RENOVAÇÃO": [
+   "ALL / FIXA BASICA - DADOS",
+   "ALL / FIXA BASICA - TV",
+   "ALL / FIXA BASICA - VOZ",
+   "ALL / FIXA BASICA PF - DADOS",
+   "ALL / FIXA BASICA PF - VOZ",
+   "ALL / FIXA BASICA PF SVA",
+   "ALL / FIXA BASICA SVA",
+   "ALL / MOVEL - VOZ",
+   "ALL / MOVEL PF - VOZ"
+  ]
+ },
+ "revenue_categories": [
+  "RECEITA TOTAL",
+  "RENOVAÇÃO",
+  "BANDA LARGA",
+  "APARELHO"
+ ],
+ "solic_sets": {
+  "APARELHO": [
+   "NOVO",
+   "TROCA"
+  ],
+  "BANDA LARGA": [
+   "MIGRACAO DE TECNOLOGIA",
+   "NOVO",
+   "PORTADO",
+   "PORTADO PF"
+  ],
+  "RECEITA TOTAL": [
+   "ATIVACAO DE SERVICO",
+   "MIGRACAO DE TECNOLOGIA",
+   "NOVO",
+   "PORTADO",
+   "PORTADO PF"
+  ],
+  "RENOVAÇÃO": [
+   "MIGRACAO",
+   "MIGRACAO DOWN",
+   "MIGRACAO UP",
+   "RENOVACAO"
+  ]
+ },
+ "stage_map": {
+  "(PN) AGUARDANDO PORTABILIDADE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "(PN) CANCELADO PORTABILIDADE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "(PN) ERRO DE PORTABILIDADE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "(PN) PORTABILIDADE NEGADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "(SME) CONFIRMACAO CQV": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "(SME) CORRECAO CONSULTOR": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "(SOHO) CONFIRMACAO DE VOZ": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "(SOHO) CORRECAO CONSULTOR": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "(VSTI) CORRECAO CONSULTOR": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ABERTA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ABERTA ABERTA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ABERTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ACEITE ENVIADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ACEITE ENVIADO (75%)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ACEITE ENVIADO SOHO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ACEITE ENVIADO VADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "AGUARDANDO ANALISE VIVO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO ASSINATURA ELETRONICA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "AGUARDANDO ATENDIMENTO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "AGUARDANDO CASO SS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO CASO/SS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO FRAUDE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO GERACAO DO CONTRATO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO INTERACAO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "AGUARDANDO SINCRONIA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "AGUARDANDO TRATAMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "AN?ISE DE CR?ITO REPROVADO MESA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ANALISE BKO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANALISE DE CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANALISE DE CREDITO EM MESA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANALISE DE CREDITO NEGADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ANALISE DE CREDITO REPROVADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ANALISE DE CREDITO REPROVADO MESA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ANALISE DE FRAUDE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANALISE DE FRAUDE EM ANALISE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANALISE MANUAL DE CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ANTIGOS": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ARQUIVADO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ATENDIDO POR OUTRO CONSULTOR": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ATENDIMENTO AGENDADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "BACKOFFICE APROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "BACKOFFICE REPROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "CANCELADA MANUALMENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CANCELADO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "CANCELADO MANUALMENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CLIENTE FIDELIZADO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "CLIENTE JA RENOVADO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "CNPJ INAPTO OU BAIXADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "CONCLUIDA CONCLUIDA": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CONCLUIDO": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CONCLUIDO COM SUCESSO": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CONCLUIDO MANUALMENTE": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CONTRATO CORRIGIDO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "CONTRATO PARA CORRECAO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CORRECAO CONSULTOR": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CR?ITO NEGADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CR?ITO REPROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CREDITO APROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "CREDITO NEGADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "CREDITO REPROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "DEIXAR NA CARTEIRA": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "DIVIDA INTERNA": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "DUPLICADOS": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "E-MAIL ENVIADO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "EM ANALISE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "EM TRAMITE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "EM TRAMITE (VADA)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "EM TRATAMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ENVIADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ENVIADO - AGENDADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ENVIADO - PENDENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ENVIADO PARA PREENCHIMENTO SOHO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "ENVIADO PARA PREENCHIMENTO VADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ERRO CRIACAO CONTA ATLYS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ERRO LINHA SC": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "ERRO PORTABILIDADE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "EXECUTADO PARCIALMENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "EXPIRADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "EXPIRADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "FASE DE CONTRATO AG. ASSINATURA DIGITAL": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "FASE DE INPUT": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "FASE DE INPUT ANALISE DE DOCUMENTACAO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "FASE DE INPUT EM ANALISE DE CRITICA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "FASE DE INPUT EM ANDAMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "FINALIZADO": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "INICIO NEGOCIACAO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "INPUT REALIZADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "LOGISTICA CONCLU?A": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "LOGISTICA CONCLUIDA": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "LOGISTICA CONCLUIDA (VADA)": {
+   "atendido": true,
+   "concluido": true,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "MESA DE CREDITO (VADA)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "MESA DE FRAUDE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "MIGRACAO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "NAO CONSEGUIU CONTATO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "NAO TEM INTERESSE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "NEGADO CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "NEGADO FRAUDE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "NUMERO INVALIDO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "ORDEM COLOCADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PARA CORRECAO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PARA IMPUT": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PEDIDO PARA INPUT": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PENDENCIA CLIENTE SOHO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "PENDENCIA VIVO SOHO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PENDENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PENDENTE EQUIPAMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PENDENTE ESTOQUE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PENDENTE PROCEDIMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PORTABILIDADE NEGADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PRE-VIABILIDADE CONCLUIDA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "PRIMEIRO CONTATO COM O CLIENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "PROPOSTA ENVIADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "PROPOSTA RECUSADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "QUALITY CALL APROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "QUALITY CALL PENDENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "QUALITY CHECK BKO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "QUALITY CHECK BKO APROVADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "QUALITY CHECK BKO EM ANALISE DOCUMENTAL": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "QUALITY CHECK BKO REPROVADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "QUALITY REPROVADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "QUALLITY CALL PENDENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "RE-ANALISE DE CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "REPROVADO CREDITO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "REPROVADO CREDITO (VADA)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "REPROVADO POR FRAUDE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "REPROVADO SAV": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "REPROVADO SUPORTE A VENDAS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "REPROVADO TRAMITACAO (VADA)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "RETIDO SOHO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "RETORNAR PARA CLIENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "RETORNO FUTURO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "RODIZIO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "SEM CONTATO COM CLIENTE": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "SEM ESTOQUE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "SOS EM TRATAMENTO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "SUBMETIDO PARA INPUT NO LEGADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "SUPER VISAO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "SUPORTE A VENDAS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "SUPORTE A VENDAS (VADA)": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "TENTATIVA DE CONTATO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TENTATIVA DE CONTATO 1": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TENTATIVA DE CONTATO 2": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TENTATIVA DE CONTATO 3": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TERMO GERADO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TRAMITANDO PELO SAV": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "TRATATIVA COM CLIENTE": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "TRATATIVA COM OPERADORA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "VALIDACAO DE DOCUMENTOS": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "VALIDANDO": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "VALIDANDO PORTIN": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "VENDA CANCELADA VENDA CANCELADA": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": false
+  },
+  "VENDA PERDIDA": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  }
+ },
+ "tv": {
+  "EQUIPES": {
+   "PV 02 - Equipe Alexandre": {
+    "label": "EQUIPE ALEXANDRE",
+    "lideres": [
+     {
+      "cargo": "Supervisor",
+      "foto": "fotos/lideres/alexandre.jpg",
+      "nome": "Alexandre"
+     }
+    ]
+   },
+   "PV 02 - Equipe Carteira": {
+    "label": "EQUIPE CARTEIRA",
+    "lideres": [
+     {
+      "cargo": "Supervisora",
+      "foto": "fotos/lideres/isabela.jpg",
+      "nome": "Isabela"
+     }
+    ]
+   },
+   "PV 02 - Equipe Elton": {
+    "label": "EQUIPE ELTON",
+    "lideres": [
+     {
+      "cargo": "Supervisor",
+      "foto": "fotos/lideres/elton.jpg",
+      "nome": "Elton"
+     }
+    ]
+   },
+   "PV 02 - Equipe Richard": {
+    "label": "EQUIPE RICHARD",
+    "lideres": [
+     {
+      "cargo": "Supervisor",
+      "foto": "fotos/lideres/richard.jpg",
+      "nome": "Richard"
+     }
+    ]
+   },
+   "PV03 - EQUIPE CAIO": {
+    "label": "EQUIPE CAIO",
+    "lideres": [
+     {
+      "cargo": "Supervisor",
+      "foto": "fotos/lideres/caio.jpg",
+      "nome": "Caio"
+     }
+    ]
+   },
+   "PV03 - EQUIPE CARTEIRA": {
+    "label": "EQUIPE DAPHNE",
+    "lideres": [
+     {
+      "cargo": "Supervisora",
+      "foto": "fotos/lideres/daphne.jpg",
+      "nome": "Daphne"
+     },
+     {
+      "cargo": "Gerente",
+      "foto": "fotos/lideres/elvio.jpg",
+      "nome": "Elvio"
+     }
+    ]
+   },
+   "PV03 - EQUIPE MARCOS": {
+    "label": "EQUIPE MARCOS",
+    "lideres": [
+     {
+      "cargo": "Supervisor",
+      "foto": "fotos/lideres/marcos.jpg",
+      "nome": "Marcos"
+     }
+    ]
+   }
+  },
+  "PV_FOTOS": {
+   "PV 01": "fotos/pv/pv-01.jpg",
+   "PV 02": "fotos/pv/pv-02.jpg",
+   "PV 03": "fotos/pv/pv-03.jpg"
+  },
+  "PV_SOMENTE_VISAO_GERAL": [],
+  "RANKING_PV_META": {
+   "RECEITA_TOTAL": 25600
+  },
+  "TV_PVS": [
+   "PV 02",
+   "PV 03"
+  ]
+ }
+}
