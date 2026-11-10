@@ -96,10 +96,9 @@ quantos pedidos foram incluídos assim como nota ao lado do filtro
 PV/Supervisor/Consultor. Essa lista só afeta o período "Mês atual" (não o
 "Últimos 60 dias").
 
-Nota: 3 dos números da lista (`40541577`, `49980193`, `49984693`) não têm o
-formato do número de pedido do CRM (que começa com "S", ex: `S41934`) — a
-Isabela confirmou que é pra desconsiderar (não fazem mal, só não vão casar
-com nenhum pedido).
+A lista é trocada todo mês (não acumula): em 2026-11-10 a Isabela mandou a
+lista de novembro — 403 pedidos cadastrados em outubro ou novembro que
+finalizaram em novembro — e ela substituiu a lista de outubro.
 
 ## O que o painel mostra
 
