@@ -37,7 +37,10 @@ EXCLUDED_TEAMS = {"BKO", "GERENTE VIVO", "PV071-00001", "PV071-00002", "PV071-00
 # somado ao total/plano do PV (pedido da Isabela em 2026-09-16).
 # (2026-10-08) A Equipe Elton virou o PV 04 (ver tv_config.EQUIPES), então
 # ninguém mais precisa ficar fora da soma do próprio PV.
-EXCLUDED_FROM_PV_TOTAL = set()
+# (2026-11-11) Novembro: a Equipe Elton não está no plano comercial (PC 100%
+# distribuído entre Carteira, Richard e Alexandre) — volta a ficar fora da
+# soma do PV 02 (realizado e plano), mas continua com tela/números próprios.
+EXCLUDED_FROM_PV_TOTAL = {"PV 02 - Equipe Elton"}
 
 
 def normaliza_pv(pv):
