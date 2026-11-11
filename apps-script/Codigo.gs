@@ -131,6 +131,8 @@ function atualizarDados() {
   try {
     var data = collectData_(new Date());
     estado = { data: data, updated_at: new Date().toISOString(), error: null };
+    try { gravarAuditoria_(collectData_.ultimaAuditoria || []); }
+    catch (e) { Logger.log('Não consegui gravar a aba AUDITORIA_MES: ' + e); }
   } catch (err) {
     // Mantém os últimos dados bons na tela e só registra o erro.
     estado = { data: anterior.data || null, updated_at: anterior.updated_at || null,
@@ -484,8 +486,10 @@ function computePeriodMetrics_(ctx, startDt, label, forceOrders, diasInfo) {
   // ---------- Receita do período (linhas de pedido) ----------
   var linesDomain = [['create_date', '>=', startStr]];
   if (forceList.length) linesDomain = ['|', ['create_date', '>=', startStr], ['order_id.name', 'in', forceList]];
-  var lines = searchReadAll_('sale.order.line', linesDomain,
-    ['product_id', 'request_type_id', 'price_total', 'salesman_id', 'order_id']);
+  var auditoria = forceOrders === ctx.pedidosMes ? ctx.auditoria : null; // só o "mês atual"
+  var lineFields = ['product_id', 'request_type_id', 'price_total', 'salesman_id', 'order_id'];
+  if (auditoria) lineFields = lineFields.concat(['order_partner_id', 'create_date']);
+  var lines = searchReadAll_('sale.order.line', linesDomain, lineFields);
 
   var prodIds = uniqSorted_(lines.map(function (r) { return m2o_(r.product_id, 0); }));
   var prodCateg = {};
@@ -518,6 +522,7 @@ function computePeriodMetrics_(ctx, startDt, label, forceOrders, diasInfo) {
     var orderId = m2o_(r.order_id, 0);
     var stageLead = leadStageByOrder[orderId];
     var fl = cls.classify(stageLead === undefined ? null : stageLead);
+    if (auditoria) auditoria.push(linhaAuditoria_(r, ctx, fl, stageLead, prodCateg, startStr, forceOrders));
     if (!(fl.concluido || fl.em_tramite)) return;
     var orderName = r.order_id ? String(r.order_id[1]).trim().toUpperCase() : null;
     if (orderName && forceOrders[orderName]) pedidosForcadosCount += 1;
@@ -631,6 +636,50 @@ function computePeriodMetrics_(ctx, startDt, label, forceOrders, diasInfo) {
   };
 }
 
+// ===================== Auditoria (aba AUDITORIA_MES) =====================
+
+var CAB_AUDITORIA = ['Pedido', 'Cadastro da linha (UTC)', 'Entrou no mês por', 'Cliente', 'PV', 'Equipe',
+  'Consultor (vendedor da linha)', 'Produto', 'Categoria do produto', 'Tipo de solicitação', 'Valor (price_total)',
+  'Etapa do lead', 'Lead concluído/em trâmite?', 'Categorias que bateram', 'Conta na Receita Total?',
+  'Valor na Receita Total', 'Motivo se não conta'];
+
+function linhaAuditoria_(r, ctx, fl, stageLead, prodCateg, startStr, forceOrders) {
+  var cls = ctx.cls;
+  var orderName = r.order_id ? String(r.order_id[1]).trim().toUpperCase() : '';
+  var noMes = r.create_date && r.create_date >= startStr;
+  var naLista = !!(orderName && forceOrders[orderName]);
+  var origem = noMes && naLista ? 'cadastro no mês + lista' : (noMes ? 'cadastro no mês' : 'lista PEDIDOS_MES');
+  var pid = m2o_(r.product_id, 0);
+  var categ = pid !== null && prodCateg[pid] !== undefined ? prodCateg[pid] : null;
+  var req = m2o_(r.request_type_id, 1);
+  var prodName = m2o_(r.product_id, 1);
+  var leadOk = !!(fl.concluido || fl.em_tramite);
+  var batem = cls.cats.filter(function (c) { return cls.lineMatches(categ, req, c, prodName); });
+  var contaRT = leadOk && batem.indexOf('RECEITA TOTAL') >= 0;
+  var sid = m2o_(r.salesman_id, 0);
+  var info = sid ? ctx.uidMap[sid] : null;
+  var motivo = '';
+  if (!leadOk) motivo = stageLead ? 'lead fora de concluído/em trâmite' : 'pedido sem lead vinculado';
+  else if (!contaRT) motivo = 'produto/tipo de solicitação fora da Receita Total';
+  var price = r.price_total || 0;
+  return [orderName, r.create_date || '', origem, m2o_(r.order_partner_id, 1) || '',
+    info ? info.pv : '', info ? (info.supervisor || '') : '', info ? info.nome : (m2o_(r.salesman_id, 1) || ''),
+    prodName || '', categ || '', req || '', price, stageLead || '', leadOk ? 'SIM' : 'NÃO',
+    batem.join(', '), contaRT ? 'SIM' : 'NÃO', contaRT ? price : 0, motivo];
+}
+
+function gravarAuditoria_(linhas) {
+  var ss = abrirPlanilha_(false);
+  var sh = ss.getSheetByName('AUDITORIA_MES') || ss.insertSheet('AUDITORIA_MES');
+  sh.clearContents();
+  var dados = [CAB_AUDITORIA].concat(linhas);
+  sh.getRange(1, 1, dados.length, CAB_AUDITORIA.length).setValues(dados);
+  sh.getRange(1, 1, 1, CAB_AUDITORIA.length).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  if (linhas.length) sh.getRange(2, 11, linhas.length, 1).setNumberFormat('#,##0.00');
+  if (linhas.length) sh.getRange(2, 16, linhas.length, 1).setNumberFormat('#,##0.00');
+}
+
 function uniqSorted_(arr) {
   var s = {};
   arr.forEach(function (v) { if (v !== null && v !== undefined && v !== false) s[v] = true; });
@@ -662,6 +711,8 @@ function collectData_(now, planilha) {
     metas: new Metas_(cfg.metas_fields, planilha.metasEquipes, planilha.metasUsuarios),
   };
   ctx.uidMap = buildUserIdMap_(cfg);
+  ctx.pedidosMes = planilha.pedidos;
+  ctx.auditoria = [];
 
   var monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   var lastNStart = new Date(now.getTime() - LAST_N_DAYS * 86400000);
@@ -675,6 +726,7 @@ function collectData_(now, planilha) {
   var month = computePeriodMetrics_(ctx, monthStart, mesLabel, planilha.pedidos, dias);
   var lastN = computePeriodMetrics_(ctx, lastNStart,
     'Últimos ' + LAST_N_DAYS + 'd (' + ddmm(lastNStart) + ' a ' + ddmm(now) + ')', null, null);
+  collectData_.ultimaAuditoria = ctx.auditoria;
   return { periods: { month: month, last_n: lastN } };
 }
 
