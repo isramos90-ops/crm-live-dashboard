@@ -25,6 +25,7 @@ FERIADOS_PATH = os.path.join(BASE_DIR, "config", "feriados.txt")
 # quando o mês não está listado aqui, é o último dia do calendário).
 CORTE_MES = {
     (2026, 9): 29,  # pedido da Isabela em 2026-09-17
+    (2026, 11): 27,  # plano comercial de novembro (Isabela, 2026-11-11)
 }
 
 
