@@ -396,3 +396,10 @@ JSON no Drive; o link do App da Web mostra as telas (`?p=tv`, `?p=explorar`,
   `configurarPainel()` (abas PEDIDOS_MES, METAS_EQUIPES, METAS_USUARIOS).
 - Não tem na versão Apps Script: pôsteres PNG de ranking na TV e os
   endpoints de exportação (/api/export_*).
+- `?p=supervisor` (2026-11-15): página dos supervisores — escolhe PV / Equipe /
+  Consultor e lista os pedidos considerados em cada KPI (Receita Total,
+  Aparelhos, Renovação, Banda Larga), separados em Concluído e Em trâmite.
+  Lê `getDetalheJson()` (arquivo `painel-crm-detalhe.json` no Drive, gravado a
+  cada atualização). Escrita direto em `apps-script/web/supervisor.html`.
+  Desde essa versão o `doGet` serve qualquer `apps-script/web/<nome>.html`
+  do GitHub via `?p=<nome>`, sem precisar reimplantar.

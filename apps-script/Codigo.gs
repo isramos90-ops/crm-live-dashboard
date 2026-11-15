@@ -107,17 +107,19 @@ function abrirPlanilha_(criarSeFaltar) {
   return ss;
 }
 
-function arquivoDados_(criarSeFaltar) {
+function arquivoDados_(criarSeFaltar, chaveProp, nomeArquivo) {
+  chaveProp = chaveProp || 'DATA_FILE_ID';
+  nomeArquivo = nomeArquivo || NOME_ARQUIVO_DADOS;
   var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty('DATA_FILE_ID');
+  var id = props.getProperty(chaveProp);
   if (id) {
     try { return DriveApp.getFileById(id); } catch (e) { if (!criarSeFaltar) throw e; }
   }
   if (!criarSeFaltar) return null;
-  var f = DriveApp.createFile(NOME_ARQUIVO_DADOS,
+  var f = DriveApp.createFile(nomeArquivo,
     JSON.stringify({ data: null, updated_at: null, error: 'Aguardando a primeira atualização.' }),
     'application/json');
-  props.setProperty('DATA_FILE_ID', f.getId());
+  props.setProperty(chaveProp, f.getId());
   return f;
 }
 
@@ -133,6 +135,11 @@ function atualizarDados() {
     estado = { data: data, updated_at: new Date().toISOString(), error: null };
     try { gravarAuditoria_(collectData_.ultimaAuditoria || []); }
     catch (e) { Logger.log('Não consegui gravar a aba AUDITORIA_MES: ' + e); }
+    try {
+      arquivoDados_(true, 'DETALHE_FILE_ID', 'painel-crm-detalhe.json').setContent(JSON.stringify({
+        updated_at: estado.updated_at, label: data.periods.month.label, linhas: collectData_.ultimoDetalhe || [] }));
+      CacheService.getScriptCache().remove('detalhe');
+    } catch (e) { Logger.log('Não consegui gravar o detalhe dos pedidos: ' + e); }
   } catch (err) {
     // Mantém os últimos dados bons na tela e só registra o erro.
     estado = { data: anterior.data || null, updated_at: anterior.updated_at || null,
@@ -148,11 +155,16 @@ function atualizarDados() {
 
 function doGet(e) {
   var p = ((e && e.parameter && e.parameter.p) || 'tv').toLowerCase();
-  var paginas = { tv: 'Painel CRM — TV', explorar: 'Painel CRM — Explorar', painel: 'Painel CRM' };
-  if (!paginas[p]) p = 'tv';
-  var html = githubTexto_('apps-script/web/' + p + '.html');
+  var titulos = { tv: 'Painel CRM — TV', explorar: 'Painel CRM — Explorar', painel: 'Painel CRM',
+    supervisor: 'Painel CRM — Supervisores' };
+  if (!/^[a-z0-9-]+$/.test(p)) p = 'tv';
+  // Qualquer página que exista em apps-script/web/ no GitHub funciona (?p=nome),
+  // sem precisar mexer neste código nem reimplantar.
+  var html;
+  try { html = githubTexto_('apps-script/web/' + p + '.html'); }
+  catch (err) { p = 'tv'; html = githubTexto_('apps-script/web/tv.html'); }
   return HtmlService.createHtmlOutput(html)
-    .setTitle(paginas[p])
+    .setTitle(titulos[p] || 'Painel CRM')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -169,10 +181,21 @@ function getDataJson() {
   return txt;
 }
 
+/** Chamado pela página ?p=supervisor — pedidos que entram em cada KPI no mês atual. */
+function getDetalheJson() {
+  var cache = CacheService.getScriptCache();
+  var txt = cache.get('detalhe');
+  if (txt) return txt;
+  var arquivo = arquivoDados_(false, 'DETALHE_FILE_ID');
+  txt = arquivo ? arquivo.getBlob().getDataAsString('UTF-8') : JSON.stringify({ linhas: [] });
+  if (txt.length < 95000) cache.put('detalhe', txt, 600);
+  return txt;
+}
+
 /** Use depois de mudar algo no GitHub, pra não esperar as 6h de cache. */
 function limparCache() {
-  CacheService.getScriptCache().removeAll(['gh:apps-script/config.json', 'gh:apps-script/web/tv.html',
-    'gh:apps-script/web/explorar.html', 'gh:apps-script/web/painel.html', 'estado']);
+  var paginas = ['tv', 'explorar', 'painel', 'supervisor'].map(function (p) { return 'gh:apps-script/web/' + p + '.html'; });
+  CacheService.getScriptCache().removeAll(['gh:apps-script/config.json', 'estado', 'detalhe'].concat(paginas));
 }
 
 function githubTexto_(caminho) {
@@ -524,6 +547,10 @@ function computePeriodMetrics_(ctx, startDt, label, forceOrders, diasInfo) {
     var fl = cls.classify(stageLead === undefined ? null : stageLead);
     if (auditoria) auditoria.push(linhaAuditoria_(r, ctx, fl, stageLead, prodCateg, startStr, forceOrders));
     if (!(fl.concluido || fl.em_tramite)) return;
+    if (auditoria && ctx.detalhe) {
+      var d = linhaDetalhe_(r, ctx, fl, stageLead, prodCateg);
+      if (d) ctx.detalhe.push(d);
+    }
     var orderName = r.order_id ? String(r.order_id[1]).trim().toUpperCase() : null;
     if (orderName && forceOrders[orderName]) pedidosForcadosCount += 1;
     var req = m2o_(r.request_type_id, 1);
@@ -668,6 +695,35 @@ function linhaAuditoria_(r, ctx, fl, stageLead, prodCateg, startStr, forceOrders
     batem.join(', '), contaRT ? 'SIM' : 'NÃO', contaRT ? price : 0, motivo];
 }
 
+/** Linha que conta em algum KPI, no formato compacto da página ?p=supervisor. */
+function linhaDetalhe_(r, ctx, fl, stageLead, prodCateg) {
+  var cls = ctx.cls;
+  var pid = m2o_(r.product_id, 0);
+  var categ = pid !== null && prodCateg[pid] !== undefined ? prodCateg[pid] : null;
+  var req = m2o_(r.request_type_id, 1);
+  var prodName = m2o_(r.product_id, 1);
+  var cats = cls.cats.filter(function (c) { return cls.lineMatches(categ, req, c, prodName); });
+  if (!cats.length) return null;
+  var sid = m2o_(r.salesman_id, 0);
+  var info = sid ? ctx.uidMap[sid] : null;
+  return {
+    pedido: r.order_id ? String(r.order_id[1]).trim().toUpperCase() : '',
+    cliente: m2o_(r.order_partner_id, 1) || '',
+    data: r.create_date || '',
+    produto: prodName || '',
+    tipo: req || '',
+    valor: r.price_total || 0,
+    etapa: stageLead || '',
+    status: fl.concluido ? 'concluido' : 'em_tramite',
+    cats: cats,
+    vendedor: info ? info.nome : (m2o_(r.salesman_id, 1) || ''),
+    pv: info ? info.pv : null,
+    supervisor: info ? (info.supervisor || '(sem supervisor)') : null,
+    so_pv: !!(info && info.so_resultado_do_pv),
+    conta_no_pv: !(info && info.conta_no_pv === false),
+  };
+}
+
 function gravarAuditoria_(linhas) {
   var ss = abrirPlanilha_(false);
   var sh = ss.getSheetByName('AUDITORIA_MES') || ss.insertSheet('AUDITORIA_MES');
@@ -713,6 +769,7 @@ function collectData_(now, planilha) {
   ctx.uidMap = buildUserIdMap_(cfg);
   ctx.pedidosMes = planilha.pedidos;
   ctx.auditoria = [];
+  ctx.detalhe = [];
 
   var monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   var lastNStart = new Date(now.getTime() - LAST_N_DAYS * 86400000);
@@ -727,6 +784,7 @@ function collectData_(now, planilha) {
   var lastN = computePeriodMetrics_(ctx, lastNStart,
     'Últimos ' + LAST_N_DAYS + 'd (' + ddmm(lastNStart) + ' a ' + ddmm(now) + ')', null, null);
   collectData_.ultimaAuditoria = ctx.auditoria;
+  collectData_.ultimoDetalhe = ctx.detalhe;
   return { periods: { month: month, last_n: lastN } };
 }
 

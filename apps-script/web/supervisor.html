@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel CRM — Supervisores</title>
+<!--
+  Página dos supervisores (?p=supervisor) — criada em 2026-11-15 a pedido da
+  Isabela. Escolhe PV / Equipe / Consultor e mostra, para cada KPI (Receita
+  Total, Aparelhos, Renovação, Banda Larga), quais pedidos estão sendo
+  considerados, separados em Concluído e Em trâmite. Mesmo visual do Explorar.
+  Dados: getDataJson() (totais, metas, fotos) + getDetalheJson() (linhas).
+-->
+<style>
+  :root {
+    --brand-purple: #660099; --brand-purple-dark: #3d005c; --brand-magenta: #ec008c;
+    --surface-1: #ffffff; --page-plane: #f3eef7; --text-primary: #17131a;
+    --text-secondary: #55505c; --text-muted: #8d8792; --gridline: #e4dfe9; --border: rgba(20,10,25,0.10);
+    --good: #1fa34a; --warn: #f1c40f; --bad: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page-plane); color: var(--text-primary); }
+  header {
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: linear-gradient(100deg, var(--brand-purple-dark), var(--brand-purple) 55%, var(--brand-magenta) 130%);
+    color: #fff;
+  }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; overflow: hidden; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.6); }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .who h1 { font-size: 18px; margin: 0; }
+  .who .sub { font-size: 12px; color: rgba(255,255,255,0.85); }
+  .brand-logo { background: #fff; border-radius: 8px; padding: 5px 10px; display: flex; align-items: center; }
+  .brand-logo img { height: 24px; display: block; }
+  .status { text-align: right; font-size: 11px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4be36a; margin-right: 5px; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(75,227,106,0.6);} 70% { box-shadow: 0 0 0 6px rgba(75,227,106,0);} 100% { box-shadow: 0 0 0 0 rgba(75,227,106,0);} }
+
+  .filtros { padding: 14px 28px; display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; background: var(--surface-1); border-bottom: 1px solid var(--border); }
+  .campo { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 0 1 260px; }
+  .campo label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .campo select, .campo input { font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-family: inherit; min-height: 40px; }
+  .campo select:disabled { color: var(--text-muted); background: #f7f5f8; }
+
+  main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 30px; display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  /* Equipe: fotos dos consultores */
+  .equipe-strip { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 6px; }
+  .pessoa { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 96px; text-align: center; cursor: pointer; background: none; border: 0; font: inherit; color: inherit; padding: 6px 4px; border-radius: 10px; }
+  .pessoa:hover { background: #f7f1fb; }
+  .pessoa .circ { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; border: 3px solid #e4d6ee; }
+  .pessoa .circ img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pessoa .nome { font-size: 12px; font-weight: 700; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pessoa .pct { font-size: 13px; font-weight: 800; }
+  .pct.good { color: var(--good); } .pct.warn { color: #b8860b; } .pct.bad { color: var(--bad); } .pct.none { color: var(--text-muted); }
+
+  /* KPIs */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .kpi { cursor: pointer; text-align: left; font: inherit; color: inherit; transition: box-shadow .15s, border-color .15s; }
+  .kpi:hover { border-color: #c9a9df; }
+  .kpi[aria-pressed="true"] { border: 2px solid var(--brand-purple); box-shadow: 0 4px 14px rgba(102,0,153,0.15); padding: 15px 17px; }
+  .kpi .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .kpi .nome { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .kpi .pct { font-size: 30px; font-weight: 800; line-height: 1; }
+  .kpi .realizado { font-size: 22px; font-weight: 800; margin-top: 8px; }
+  .kpi .plano { font-size: 12px; color: var(--text-muted); }
+  .meter { position: relative; height: 10px; border-radius: 5px; margin: 10px 0 8px;
+    background: linear-gradient(90deg, var(--bad) 0%, var(--bad) 60%, var(--warn) 60%, var(--warn) 85%, var(--good) 85%, var(--good) 100%); }
+  .meter .marker { position: absolute; top: -4px; width: 4px; height: 18px; border-radius: 2px; background: #17131a; }
+  .chips { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .chip { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); background: #f7f5f8; border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px 5px 10px; }
+  .chip b { margin-left: auto; font-size: 13px; color: var(--text-primary); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .chip.concluido .dot { background: var(--good); } .chip.tramite .dot { background: var(--warn); }
+  .kpi .ver { font-size: 11px; color: var(--brand-purple); font-weight: 700; margin-top: 10px; }
+
+  /* Detalhe */
+  .det-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .det-topo h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--brand-purple-dark); text-transform: none; letter-spacing: 0; }
+  .det-topo .busca { min-width: 240px; font-size: 14px; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--border); font-family: inherit; }
+  .det-nota { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+  .bloco { margin-top: 14px; }
+  .bloco-cab { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px 10px 0 0; font-weight: 800; font-size: 14px; }
+  .bloco-cab .tot { margin-left: auto; font-size: 15px; }
+  .bloco.concluido .bloco-cab { background: #e6f6ec; color: #136b31; }
+  .bloco.tramite .bloco-cab { background: #fdf6d8; color: #7a5d00; }
+  .bloco-cab .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .bloco.concluido .dot { background: var(--good); } .bloco.tramite .dot { background: var(--warn); }
+  .tabela-wrap { overflow-x: auto; border: 1px solid var(--gridline); border-top: 0; border-radius: 0 0 10px 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); padding: 9px 12px; border-bottom: 1px solid var(--gridline); background: #fbf9fc; white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0ecf3; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td .pedido { font-weight: 700; white-space: nowrap; }
+  td .etapa { display: inline-block; font-size: 11px; background: #f2e3fa; color: var(--brand-purple-dark); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+  td .cons { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  td .cons .mini { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; background: var(--brand-purple); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  td .cons .mini img { width: 100%; height: 100%; object-fit: cover; }
+  .vazio { padding: 16px; font-size: 13px; color: var(--text-muted); }
+  footer { padding: 10px 24px 18px; text-align: center; font-size: 11px; color: var(--text-muted); }
+  .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr; } header, .filtros { padding-left: 14px; padding-right: 14px; } main { padding: 14px 10px 24px; } .campo { flex: 1 1 100%; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="who">
+    <div class="avatar" id="hd-avatar">–</div>
+    <div>
+      <h1 id="hd-nome">Carregando…</h1>
+      <div class="sub" id="hd-sub"></div>
+    </div>
+  </div>
+  <div class="brand-logo"><img src="https://raw.githubusercontent.com/isramos90-ops/crm-live-dashboard/main/static/logo-grupo-global.png" alt="Grupo Global"></div>
+  <div class="status">
+    <div><span class="live-dot"></span>Atualizando automaticamente</div>
+    <div id="hd-updated"></div>
+    <div>Desenvolvido por Isabela Ramos</div>
+  </div>
+</header>
+
+<div class="filtros">
+  <div class="campo"><label for="sel-pv">PV</label><select id="sel-pv"></select></div>
+  <div class="campo"><label for="sel-sup">Supervisor / Equipe</label><select id="sel-sup"></select></div>
+  <div class="campo"><label for="sel-cons">Consultor</label><select id="sel-cons"></select></div>
+</div>
+
+<main id="main"><div class="no-data">Carregando dados…</div></main>
+<footer>Painel CRM · Vivo Empresas · Grupo Global — pedidos considerados no mês atual, atualizado de hora em hora</footer>
+
+<script>
+const STATIC_BASE = "https://raw.githubusercontent.com/isramos90-ops/crm-live-dashboard/main/static/";
+const TODOS = "__TODOS__";
+const REFRESH_MS = 3600 * 1000;
+
+const KPIS = [
+  { id: 'RECEITA TOTAL', nome: 'Receita Total', metaKey: 'RECEITA_TOTAL', qtd: false },
+  { id: 'APARELHO', nome: 'Aparelhos', metaKey: 'RECEITA_APARELHOS', qtd: false },
+  { id: 'RENOVAÇÃO', nome: 'Renovação', metaKey: 'RECEITA_RENOVACAO', qtd: false },
+  { id: 'BANDA LARGA', nome: 'Banda Larga', metaKey: 'QUANTIDADE_BL', qtd: true },
+];
+
+function chamar(fn) {
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(t => resolve(JSON.parse(t))).withFailureHandler(reject)[fn]();
+  });
+}
+
+function fmtBRL(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtBRL0(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }); }
+function fmtNum(v) { return (v || 0).toLocaleString('pt-BR'); }
+function fmtData(s) { if (!s) return ''; const d = new Date(s.replace(' ', 'T') + 'Z'); return isNaN(d) ? s.slice(0, 10) : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
+function pct(r, m) { return m > 0 ? 100 * r / m : null; }
+function pctClass(p) { return p === null ? 'none' : (p >= 85 ? 'good' : (p >= 60 ? 'warn' : 'bad')); }
+function pctLabel(p) { return p === null ? 'Sem plano' : p.toFixed(0) + '%'; }
+function clamp(p) { return p === null ? 0 : Math.max(0, Math.min(100, p)); }
+function initials(n) { const p = (n || '').trim().split(/\s+/); return (((p[0] || '')[0] || '') + ((p[1] || '')[0] || '')).toUpperCase(); }
+function staticUrl(p) { return p ? STATIC_BASE + p : null; }
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fotoHtml(foto, nome) { return foto ? `<img src="${esc(staticUrl(foto))}" alt="${esc(nome)}">` : esc(initials(nome)); }
+
+let DATA = null, DET = null, UPDATED = null;
+let SEL_PV = null, SEL_SUP = TODOS, SEL_CONS = TODOS, SEL_KPI = 'RECEITA TOTAL', BUSCA = '';
+// Mapa nome do consultor -> nó (pra foto/nome de exibição nas tabelas)
+let PESSOAS = {};
+
+async function carregar() {
+  try {
+    const [estado, det] = await Promise.all([chamar('getDataJson'), chamar('getDetalheJson')]);
+    UPDATED = estado.updated_at;
+    document.getElementById('hd-updated').textContent = UPDATED ? 'Última atualização ' + new Date(UPDATED).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '';
+    if (!estado.data) { document.getElementById('main').innerHTML = '<div class="no-data">' + esc(estado.error || 'Nenhum dado disponível ainda.') + '</div>'; return; }
+    DATA = estado.data; DET = det || { linhas: [] };
+    PESSOAS = {};
+    for (const pv of DATA.periods.month.hierarchy) for (const s of pv.supervisors) for (const c of s.consultores) PESSOAS[c.nome] = c;
+    montarFiltros();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('main').innerHTML = '<div class="no-data">Não consegui carregar os dados. Tente recarregar a página.</div>';
+  }
+}
+
+function preencher(sel, opts, atual) {
+  sel.innerHTML = opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+  sel.value = opts.some(o => o.value === atual) ? atual : (opts[0] ? opts[0].value : '');
+  return sel.value;
+}
+
+function montarFiltros() {
+  const hier = DATA.periods.month.hierarchy || [];
+  if (!hier.length) { document.getElementById('main').innerHTML = '<div class="no-data">Nenhum dado disponível ainda.</div>'; return; }
+  const sPv = document.getElementById('sel-pv'), sSup = document.getElementById('sel-sup'), sCons = document.getElementById('sel-cons');
+  SEL_PV = preencher(sPv, hier.map(p => ({ value: p.pv, label: p.pv })), SEL_PV || hier[0].pv);
+  const pv = hier.find(p => p.pv === SEL_PV);
+  SEL_SUP = preencher(sSup, [{ value: TODOS, label: '— Visão geral do PV —' }].concat(pv.supervisors.map(s => ({ value: s.supervisor, label: s.supervisor }))), SEL_SUP);
+  const sup = SEL_SUP === TODOS ? null : pv.supervisors.find(s => s.supervisor === SEL_SUP);
+  sCons.disabled = !sup;
+  SEL_CONS = preencher(sCons, [{ value: TODOS, label: sup ? '— Visão geral da equipe —' : '— escolha uma equipe —' }]
+    .concat(sup ? sup.consultores.map(c => ({ value: c.nome, label: c.nome_exibicao || c.nome })) : []), SEL_CONS);
+  const cons = sup && SEL_CONS !== TODOS ? sup.consultores.find(c => c.nome === SEL_CONS) : null;
+  render(pv, sup, cons);
+}
+
+function linhasDoNivel(pv, sup, cons) {
+  return (DET.linhas || []).filter(l => {
+    if (l.pv !== pv.pv) return false;
+    if (!sup) return l.conta_no_pv;
+    if (l.so_pv || l.supervisor !== sup.supervisor) return false;
+    return !cons || l.vendedor === cons.nome;
+  });
+}
+
+function render(pv, sup, cons) {
+  const node = cons || sup || pv;
+  const meta = node.meta || {};
+  // Cabeçalho
+  let nome, sub, foto, avatarTxt;
+  if (cons) { nome = cons.nome_exibicao || cons.nome; sub = pv.pv + ' · ' + sup.supervisor; foto = cons.foto; avatarTxt = initials(nome); }
+  else if (sup) { nome = sup.supervisor; sub = pv.pv + ' · Visão geral da equipe'; foto = sup.foto; avatarTxt = 'EQ'; }
+  else { nome = pv.pv; sub = 'Visão geral do PV'; foto = pv.foto; avatarTxt = 'PV'; }
+  document.getElementById('hd-nome').textContent = nome;
+  document.getElementById('hd-sub').textContent = sub + ' · ' + DATA.periods.month.label;
+  document.getElementById('hd-avatar').innerHTML = foto ? `<img src="${esc(staticUrl(foto))}" alt="${esc(nome)}">` : esc(avatarTxt);
+
+  const linhas = linhasDoNivel(pv, sup, cons);
+  const porKpi = {};
+  for (const k of KPIS) {
+    const ls = linhas.filter(l => l.cats.indexOf(k.id) >= 0);
+    const c = ls.filter(l => l.status === 'concluido'), t = ls.filter(l => l.status !== 'concluido');
+    porKpi[k.id] = { c, t, vc: soma(c), vt: soma(t) };
+  }
+
+  let html = '';
+  // Faixa de fotos: consultores da equipe (ou equipes do PV)
+  if (sup && !cons) html += faixaPessoas('Consultores da equipe — clique para ver os pedidos de cada um',
+    sup.consultores.map(c => ({ key: c.nome, nome: c.nome_exibicao || c.nome, foto: c.foto, p: pct(c.revenue['RECEITA TOTAL'].receita, c.meta.RECEITA_TOTAL) })), 'cons');
+  if (!sup) html += faixaPessoas('Equipes do PV — clique para abrir a equipe',
+    pv.supervisors.map(s => ({ key: s.supervisor, nome: s.supervisor, foto: s.foto, p: pct(s.revenue['RECEITA TOTAL'].receita, s.meta.RECEITA_TOTAL) })), 'sup');
+
+  html += '<div class="kpi-grid">' + KPIS.map(k => {
+    const real = k.qtd ? node.revenue[k.id].qtd : node.revenue[k.id].receita;
+    const m = meta[k.metaKey] || 0;
+    const p = pct(real, m);
+    const d = porKpi[k.id];
+    const fmt = v => k.qtd ? fmtNum(v) + ' BL' : fmtBRL0(v);
+    const cVal = k.qtd ? d.c.length : d.vc, tVal = k.qtd ? d.t.length : d.vt;
+    return `<button type="button" class="card kpi" data-kpi="${esc(k.id)}" aria-pressed="${SEL_KPI === k.id}">
+      <div class="topo"><span class="nome">${k.nome}</span><span class="pct ${pctClass(p)}">${pctLabel(p)}</span></div>
+      <div class="realizado">${fmt(real)}</div>
+      <div class="plano">Plano: ${m > 0 ? fmt(m) : '—'}</div>
+      <div class="meter"><div class="marker" style="left: calc(${clamp(p).toFixed(1)}% - 2px)"></div></div>
+      <div class="chips">
+        <div class="chip concluido"><span class="dot"></span>Concluído · ${d.c.length} ${d.c.length === 1 ? 'item' : 'itens'}<b>${fmt(cVal)}</b></div>
+        <div class="chip tramite"><span class="dot"></span>Em trâmite · ${d.t.length} ${d.t.length === 1 ? 'item' : 'itens'}<b>${fmt(tVal)}</b></div>
+      </div>
+      <div class="ver">${SEL_KPI === k.id ? '▼ pedidos abaixo' : 'Ver pedidos ›'}</div>
+    </button>`;
+  }).join('') + '</div>';
+
+  const k = KPIS.find(x => x.id === SEL_KPI);
+  const d = porKpi[k.id];
+  const mostraCons = !cons;
+  html += `<section class="card" id="detalhe">
+    <div class="det-topo"><h2>Pedidos considerados em ${k.nome}</h2>
+      <input class="busca" id="busca" type="search" placeholder="Buscar pedido, cliente, produto ou consultor" value="${esc(BUSCA)}"></div>
+    <div class="det-nota">Cada linha é um produto de um pedido. ${k.qtd ? 'Banda Larga conta a quantidade de itens.' : 'O valor é o total da linha no CRM.'}
+      Concluído = lead em etapa concluída; Em trâmite = lead ainda em andamento (crédito, input, logística etc.).</div>
+    ${bloco('concluido', 'Concluído', d.c, k, mostraCons)}
+    ${bloco('tramite', 'Em trâmite', d.t, k, mostraCons)}
+  </section>`;
+
+  document.getElementById('main').innerHTML = html;
+  ligarEventos();
+}
+
+function soma(ls) { return ls.reduce((a, l) => a + (l.valor || 0), 0); }
+
+function faixaPessoas(titulo, itens, tipo) {
+  if (!itens.length) return '';
+  return `<section class="card"><h2>${esc(titulo)}</h2><div class="equipe-strip">` + itens.map(i =>
+    `<button type="button" class="pessoa" data-${tipo}="${esc(i.key)}" title="${esc(i.nome)}">
+      <div class="circ">${fotoHtml(i.foto, i.nome)}</div>
+      <div class="nome">${esc(i.nome)}</div>
+      <div class="pct ${pctClass(i.p)}">${pctLabel(i.p)}</div>
+    </button>`).join('') + '</div></section>';
+}
+
+function bloco(cls, titulo, ls, k, mostraCons) {
+  const q = BUSCA.trim().toLowerCase();
+  const f = q ? ls.filter(l => [l.pedido, l.cliente, l.produto, l.vendedor, l.tipo, l.etapa].join(' ').toLowerCase().indexOf(q) >= 0) : ls;
+  const ord = f.slice().sort((a, b) => (b.valor - a.valor) || a.pedido.localeCompare(b.pedido));
+  const tot = k.qtd ? fmtNum(f.length) + ' BL · ' + fmtBRL(soma(f)) : fmtBRL(soma(f));
+  let corpo;
+  if (!ord.length) corpo = `<div class="vazio">${q ? 'Nenhum pedido encontrado para essa busca.' : 'Nenhum pedido nesta situação.'}</div>`;
+  else corpo = `<table><thead><tr><th>Pedido</th><th>Cliente</th>${mostraCons ? '<th>Consultor</th>' : ''}<th>Produto</th><th>Tipo</th><th>Etapa do lead</th><th>Cadastro</th><th class="num">Valor</th></tr></thead><tbody>` +
+    ord.map(l => {
+      const p = PESSOAS[l.vendedor];
+      const nomeV = p ? (p.nome_exibicao || p.nome) : l.vendedor;
+      return `<tr><td><span class="pedido">${esc(l.pedido)}</span></td><td>${esc(l.cliente)}</td>` +
+        (mostraCons ? `<td><span class="cons"><span class="mini">${fotoHtml(p && p.foto, nomeV)}</span>${esc(nomeV)}</span></td>` : '') +
+        `<td>${esc(l.produto)}</td><td>${esc(l.tipo)}</td><td><span class="etapa">${esc(l.etapa)}</span></td><td>${fmtData(l.data)}</td><td class="num">${fmtBRL(l.valor)}</td></tr>`;
+    }).join('') + '</tbody></table>';
+  return `<div class="bloco ${cls}"><div class="bloco-cab"><span class="dot"></span>${titulo} · ${f.length} ${f.length === 1 ? 'item' : 'itens'}<span class="tot">${tot}</span></div><div class="tabela-wrap">${corpo}</div></div>`;
+}
+
+function ligarEventos() {
+  document.querySelectorAll('.kpi').forEach(b => b.addEventListener('click', () => {
+    SEL_KPI = b.dataset.kpi; montarFiltros();
+    const el = document.getElementById('detalhe'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  document.querySelectorAll('[data-cons]').forEach(b => b.addEventListener('click', () => { SEL_CONS = b.dataset.cons; montarFiltros(); }));
+  document.querySelectorAll('[data-sup]').forEach(b => b.addEventListener('click', () => { SEL_SUP = b.dataset.sup; SEL_CONS = TODOS; montarFiltros(); }));
+  const busca = document.getElementById('busca');
+  if (busca) busca.addEventListener('input', () => {
+    BUSCA = busca.value;
+    const pos = busca.selectionStart;
+    montarFiltros();
+    const nb = document.getElementById('busca'); nb.focus(); try { nb.setSelectionRange(pos, pos); } catch (e) {}
+  });
+}
+
+document.getElementById('sel-pv').addEventListener('change', e => { SEL_PV = e.target.value; SEL_SUP = TODOS; SEL_CONS = TODOS; montarFiltros(); });
+document.getElementById('sel-sup').addEventListener('change', e => { SEL_SUP = e.target.value; SEL_CONS = TODOS; montarFiltros(); });
+document.getElementById('sel-cons').addEventListener('change', e => { SEL_CONS = e.target.value; montarFiltros(); });
+
+carregar();
+setInterval(carregar, REFRESH_MS);
+</script>
+</body>
+</html>
