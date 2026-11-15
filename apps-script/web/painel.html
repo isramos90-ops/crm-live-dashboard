@@ -202,12 +202,24 @@
 </footer>
 
 <script>
+// 1ª carga: dados que já vieram dentro da página (window.__ESTADO__, posto pelo
+// doGet). Atualizações seguintes: google.script.run, com limite de 60s — se
+// falhar (ex.: várias contas Google no navegador), a tela mantém os dados.
+var __ESTADO_INICIAL_USADO = false;
 function apiData() {
+  if (!__ESTADO_INICIAL_USADO && window.__ESTADO__) {
+    __ESTADO_INICIAL_USADO = true;
+    return Promise.resolve(window.__ESTADO__);
+  }
+  __ESTADO_INICIAL_USADO = true;
   return new Promise(function (resolve, reject) {
-    google.script.run
-      .withSuccessHandler(function (txt) { resolve(JSON.parse(txt)); })
-      .withFailureHandler(reject)
-      .getDataJson();
+    var t = setTimeout(function () { reject(new Error('tempo esgotado')); }, 60000);
+    try {
+      google.script.run
+        .withSuccessHandler(function (txt) { clearTimeout(t); resolve(JSON.parse(txt)); })
+        .withFailureHandler(function (e) { clearTimeout(t); reject(e); })
+        .getDataJson();
+    } catch (e) { clearTimeout(t); reject(e); }
   });
 }
 

@@ -144,9 +144,19 @@ const KPIS = [
   { id: 'BANDA LARGA', nome: 'Banda Larga', metaKey: 'QUANTIDADE_BL', qtd: true },
 ];
 
+// 1ª carga usa os dados que já vieram na página (window.__ESTADO__ /
+// window.__DETALHE__, postos pelo doGet) — funciona mesmo com várias contas
+// Google logadas no navegador. Atualizações seguintes tentam google.script.run
+// com limite de 60s; se falhar, a tela continua com os últimos dados.
+const INICIAL = { getDataJson: window.__ESTADO__, getDetalheJson: window.__DETALHE__ };
 function chamar(fn) {
+  if (INICIAL[fn]) { const v = INICIAL[fn]; INICIAL[fn] = null; return Promise.resolve(v); }
   return new Promise((resolve, reject) => {
-    google.script.run.withSuccessHandler(t => resolve(JSON.parse(t))).withFailureHandler(reject)[fn]();
+    const t = setTimeout(() => reject(new Error('tempo esgotado')), 60000);
+    try {
+      google.script.run.withSuccessHandler(x => { clearTimeout(t); resolve(JSON.parse(x)); })
+        .withFailureHandler(e => { clearTimeout(t); reject(e); })[fn]();
+    } catch (e) { clearTimeout(t); reject(e); }
   });
 }
 
@@ -180,7 +190,7 @@ async function carregar() {
     montarFiltros();
   } catch (e) {
     console.error(e);
-    document.getElementById('main').innerHTML = '<div class="no-data">Não consegui carregar os dados. Tente recarregar a página.</div>';
+    if (!DATA) document.getElementById('main').innerHTML = '<div class="no-data">Não consegui carregar os dados. Tente recarregar a página.</div>';
   }
 }
 

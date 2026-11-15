@@ -163,10 +163,23 @@ function doGet(e) {
   var html;
   try { html = githubTexto_('apps-script/web/' + p + '.html'); }
   catch (err) { p = 'tv'; html = githubTexto_('apps-script/web/tv.html'); }
+  // Os dados já vão dentro da página: assim ela abre mesmo quando o navegador
+  // tem várias contas Google logadas (nesse caso o google.script.run do Google
+  // trava e a tela ficava em "Carregando…").
+  var inj = '';
+  try { inj += 'window.__ESTADO__=' + jsonSeguro_(getDataJson()) + ';'; } catch (err) { Logger.log(err); }
+  if (p === 'supervisor') {
+    try { inj += 'window.__DETALHE__=' + jsonSeguro_(getDetalheJson()) + ';'; } catch (err) { Logger.log(err); }
+  }
+  if (inj) html = html.replace('<head>', '<head><script>' + inj + '</script>');
   return HtmlService.createHtmlOutput(html)
     .setTitle(titulos[p] || 'Painel CRM')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function jsonSeguro_(txt) {
+  return String(txt).replace(/<\//g, '<\\/').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 }
 
 /** Chamado pelas telas (google.script.run) — devolve o JSON da última atualização. */
