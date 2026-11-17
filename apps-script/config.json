@@ -1589,10 +1589,16 @@
   "FASE DE CONTRATO AG. ASSINATURA DIGITAL": {
    "atendido": true,
    "concluido": false,
-   "convertido": false,
-   "em_tramite": false
+   "convertido": true,
+   "em_tramite": true
   },
   "FASE DE INPUT": {
+   "atendido": true,
+   "concluido": false,
+   "convertido": true,
+   "em_tramite": true
+  },
+  "FASE DE INPUT ACAO COMERCIAL (DP)": {
    "atendido": true,
    "concluido": false,
    "convertido": true,
@@ -1665,6 +1671,12 @@
    "em_tramite": true
   },
   "MIGRACAO": {
+   "atendido": false,
+   "concluido": false,
+   "convertido": false,
+   "em_tramite": false
+  },
+  "NAN": {
    "atendido": false,
    "concluido": false,
    "convertido": false,
