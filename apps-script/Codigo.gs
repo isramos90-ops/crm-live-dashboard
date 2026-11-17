@@ -810,3 +810,116 @@ function testarConexao() {
   Logger.log('Mês ' + d.periods.month.label + ': ' + r.total + ' leads, receita total R$ ' +
     r.revenue['RECEITA TOTAL'].receita + ', pedidos da lista que entraram: ' + d.periods.month.pedidos_mes_atual_count);
 }
+
+// ===================== Atendimentos do mês x renovação =====================
+
+/**
+ * Rode esta (▶ Executar) para gerar as abas de outubro/2026:
+ *   ATEND_OUT_2026  → todo lead atendido em outubro (teve ao menos uma
+ *                     movimentação de etapa válida no mês, feita por consultor)
+ *                     com o resultado dos pedidos dele
+ *   RENOV_OUT_2026  → só os que resultaram em renovação, sem venda nova
+ * Para outro mês: exportarAtendimentosRenovacao_(ano, mes).
+ */
+function exportarRenovacaoOutubro() {
+  exportarAtendimentosRenovacao_(2026, 10);
+}
+
+function exportarAtendimentosRenovacao_(ano, mes) {
+  var cfg = getConfig_();
+  var cls = new Classificador_(cfg);
+  var uidMap = buildUserIdMap_(cfg);
+  var sysIds = toSet_(SYSTEM_USER_IDS);
+  // Mês no horário de Brasília (UTC-3)
+  var ini = fmtOdoo_(new Date(Date.UTC(ano, mes - 1, 1, 3)));
+  var fim = fmtOdoo_(new Date(Date.UTC(ano, mes, 1, 3)));
+  var sufixo = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][mes - 1] + '_' + ano;
+
+  // 1) Movimentações válidas do mês
+  var mv = searchReadAll_('mail.tracking.value',
+    [['field_id', '=', STAGE_TRACKING_FIELD_ID], ['create_date', '>=', ini], ['create_date', '<', fim]],
+    ['create_uid', 'new_value_char', 'mail_message_id', 'create_date']);
+  mv = mv.filter(function (r) {
+    return r.create_uid && !sysIds[r.create_uid[0]] && r.mail_message_id &&
+      cls.isMovement(r.new_value_char === false ? null : r.new_value_char);
+  });
+
+  // 2) Movimentação → lead
+  var msgIds = uniqSorted_(mv.map(function (r) { return r.mail_message_id[0]; }));
+  var msgLead = {};
+  readIds_('mail.message', msgIds, ['id', 'res_id', 'model']).forEach(function (m) {
+    if (m.model === 'crm.lead' && m.res_id) msgLead[m.id] = m.res_id;
+  });
+  var porLead = {};
+  mv.forEach(function (r) {
+    var lid = msgLead[r.mail_message_id[0]];
+    if (!lid) return;
+    var x = porLead[lid] || (porLead[lid] = { qtd: 0, ultima: '', etapaMes: '', quem: {} });
+    x.qtd += 1;
+    if (r.create_date >= x.ultima) { x.ultima = r.create_date; x.etapaMes = r.new_value_char || ''; }
+    x.quem[r.create_uid[1]] = true;
+  });
+  var leadIds = Object.keys(porLead).map(Number).sort(function (a, b) { return a - b; });
+
+  // 3) Leads, pedidos e linhas
+  var leads = {};
+  readIds_('crm.lead', leadIds, ['id', 'name', 'partner_id', 'user_id', 'stage_id', 'team_id']).forEach(function (l) { leads[l.id] = l; });
+  var pedidosPorLead = {}, leadDoPedido = {};
+  for (var i = 0; i < leadIds.length; i += 1000) {
+    searchReadAll_('sale.order', [['opportunity_id', 'in', leadIds.slice(i, i + 1000)]], ['id', 'name', 'opportunity_id'])
+      .forEach(function (o) {
+        var lid = m2o_(o.opportunity_id, 0);
+        (pedidosPorLead[lid] = pedidosPorLead[lid] || []).push(o.name);
+        leadDoPedido[o.id] = lid;
+      });
+  }
+  var orderIds = Object.keys(leadDoPedido).map(Number);
+  var linhasPorLead = {};
+  for (var j = 0; j < orderIds.length; j += 1000) {
+    searchReadAll_('sale.order.line', [['order_id', 'in', orderIds.slice(j, j + 1000)]],
+      ['order_id', 'request_type_id', 'price_total', 'product_id']).forEach(function (r) {
+        var lid = leadDoPedido[m2o_(r.order_id, 0)];
+        (linhasPorLead[lid] = linhasPorLead[lid] || []).push(r);
+      });
+  }
+
+  // 4) Classifica o resultado de cada lead pelo tipo de solicitação das linhas
+  var renovSet = cls.solic['RENOVAÇÃO'], novaSet = cls.solic['RECEITA TOTAL'];
+  var cab = ['Lead', 'Cliente', 'PV', 'Equipe', 'Dono do lead', 'Quem atendeu em ' + sufixo.replace('_', '/'),
+    'Movimentações no mês', 'Última movimentação (UTC)', 'Etapa após a última movimentação', 'Etapa atual do lead',
+    'Pedidos', 'Tipos de solicitação', 'Valor renovação/migração', 'Valor venda nova', 'Valor outros (troca, TT…)', 'Resultado'];
+  var todas = [], renov = [];
+  leadIds.forEach(function (lid) {
+    var l = leads[lid]; if (!l) return;
+    var x = porLead[lid];
+    var ls = linhasPorLead[lid] || [];
+    var vR = 0, vN = 0, vO = 0, tipos = {};
+    ls.forEach(function (r) {
+      var t = m2o_(r.request_type_id, 1) || '(sem tipo)';
+      tipos[t] = true;
+      var n = norm_(t), v = r.price_total || 0;
+      if (renovSet[n]) vR += v; else if (novaSet[n]) vN += v; else vO += v;
+    });
+    var temR = ls.some(function (r) { return renovSet[norm_(m2o_(r.request_type_id, 1))]; });
+    var temN = ls.some(function (r) { return novaSet[norm_(m2o_(r.request_type_id, 1))]; });
+    var resultado = !ls.length ? 'Sem pedido' : (temR && !temN ? 'Só renovação' : (temR && temN ? 'Renovação + venda nova' : (temN ? 'Só venda nova' : 'Outros')));
+    var dono = m2o_(l.user_id, 0) ? uidMap[l.user_id[0]] : null;
+    var linha = [l.name || ('#' + lid), m2o_(l.partner_id, 1) || '', dono ? dono.pv : '', dono ? (dono.supervisor || '') : (m2o_(l.team_id, 1) || ''),
+      m2o_(l.user_id, 1) || '', Object.keys(x.quem).join(', '), x.qtd, x.ultima, x.etapaMes, m2o_(l.stage_id, 1) || '',
+      (pedidosPorLead[lid] || []).join(', '), Object.keys(tipos).join(', '), round2_(vR), round2_(vN), round2_(vO), resultado];
+    todas.push(linha);
+    if (resultado === 'Só renovação') renov.push(linha);
+  });
+
+  var ss = abrirPlanilha_(false);
+  [['ATEND_' + sufixo, todas], ['RENOV_' + sufixo, renov]].forEach(function (par) {
+    var sh = ss.getSheetByName(par[0]) || ss.insertSheet(par[0]);
+    sh.clearContents();
+    var dados = [cab].concat(par[1]);
+    sh.getRange(1, 1, dados.length, cab.length).setValues(dados);
+    sh.getRange(1, 1, 1, cab.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    if (par[1].length) sh.getRange(2, 13, par[1].length, 3).setNumberFormat('#,##0.00');
+  });
+  Logger.log(sufixo + ': ' + todas.length + ' leads atendidos, ' + renov.length + ' só com renovação.');
+}
