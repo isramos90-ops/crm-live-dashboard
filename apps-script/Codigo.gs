@@ -16,6 +16,8 @@
  * (criada pelo configurarPainel):
  *   - aba PEDIDOS_MES     → pedidos que contam na receita do mês atual mesmo
  *                           tendo sido cadastrados antes (um por linha)
+ *   - aba PRODUTOS_NAO_REMUNERADOS → nome do produto (um por linha) que não
+ *                           conta em nenhum KPI de receita (ex.: IP FIXO)
  *   - aba METAS_EQUIPES / METAS_USUARIOS → plano comercial do mês
  *
  * Etapas, classificação de receita, hierarquia, fotos e as telas vêm do
@@ -315,7 +317,12 @@ function Classificador_(cfg) {
   });
   this.nonMov = toSet_(cfg.non_movement_stages);
   this.miscatBL = toSet_(cfg.miscategorized_as_banda_larga);
+  this.naoRemunerados = {}; // preenchido pela aba PRODUTOS_NAO_REMUNERADOS
 }
+
+Classificador_.prototype.naoRemunerado = function (prodName) {
+  return prodName !== null && prodName !== undefined && !!this.naoRemunerados[norm_(prodName)];
+};
 Classificador_.prototype.classify = function (stageName) {
   return this.stageMap[norm_(stageName)] || { atendido: false, convertido: false, concluido: false, em_tramite: false };
 };
@@ -323,6 +330,7 @@ Classificador_.prototype.isMovement = function (stageName) {
   return !this.nonMov[norm_(stageName)];
 };
 Classificador_.prototype.lineMatches = function (categName, reqName, cat, prodName) {
+  if (this.naoRemunerado(prodName)) return false;
   if (cat === 'BANDA LARGA' && prodName !== null && prodName !== undefined && this.miscatBL[norm_(prodName)]) return false;
   return !!this.prod[cat][norm_(categName)] && !!this.solic[cat][norm_(reqName)];
 };
@@ -700,6 +708,7 @@ function linhaAuditoria_(r, ctx, fl, stageLead, prodCateg, startStr, forceOrders
   var info = sid ? ctx.uidMap[sid] : null;
   var motivo = '';
   if (!leadOk) motivo = stageLead ? 'lead fora de concluído/em trâmite' : 'pedido sem lead vinculado';
+  else if (cls.naoRemunerado(prodName)) motivo = 'produto não remunerado (aba PRODUTOS_NAO_REMUNERADOS)';
   else if (!contaRT) motivo = 'produto/tipo de solicitação fora da Receita Total';
   var price = r.price_total || 0;
   return [orderName, r.create_date || '', origem, m2o_(r.order_partner_id, 1) || '',
@@ -767,7 +776,12 @@ function lerPlanilha_() {
     var p = String(r[0] || '').trim().toUpperCase();
     if (p) pedidos[p] = true;
   });
-  return { pedidos: pedidos, metasEquipes: valores('METAS_EQUIPES'), metasUsuarios: valores('METAS_USUARIOS') };
+  var naoRem = {};
+  valores('PRODUTOS_NAO_REMUNERADOS').forEach(function (r) {
+    var n = norm_(r[0]);
+    if (n) naoRem[n] = true;
+  });
+  return { pedidos: pedidos, naoRemunerados: naoRem, metasEquipes: valores('METAS_EQUIPES'), metasUsuarios: valores('METAS_USUARIOS') };
 }
 
 /** Monta o mesmo JSON que o /api/data do app.py devolvia em "data". */
@@ -779,6 +793,7 @@ function collectData_(now, planilha) {
     cls: new Classificador_(cfg),
     metas: new Metas_(cfg.metas_fields, planilha.metasEquipes, planilha.metasUsuarios),
   };
+  ctx.cls.naoRemunerados = planilha.naoRemunerados || {};
   ctx.uidMap = buildUserIdMap_(cfg);
   ctx.pedidosMes = planilha.pedidos;
   ctx.auditoria = [];
@@ -828,6 +843,7 @@ function exportarRenovacaoOutubro() {
 function exportarAtendimentosRenovacao_(ano, mes) {
   var cfg = getConfig_();
   var cls = new Classificador_(cfg);
+  try { cls.naoRemunerados = lerPlanilha_().naoRemunerados || {}; } catch (e) { Logger.log(e); }
   var uidMap = buildUserIdMap_(cfg);
   var sysIds = toSet_(SYSTEM_USER_IDS);
   // Mês no horário de Brasília (UTC-3)
