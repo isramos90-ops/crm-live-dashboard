@@ -41,11 +41,11 @@
   .campo label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
   .campo select, .campo input { font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-family: inherit; min-height: 40px; }
   .campo select:disabled { color: var(--text-muted); background: #f7f5f8; }
-  .btn-export { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 9px 16px; border-radius: 8px;
-    border: 1px solid #1d6f42; background: #1d6f42; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-export { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 12px; border-radius: 8px;
+    border: 1px solid #1d6f42; background: #1d6f42; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .btn-export:hover { background: #185c37; }
   .btn-export:disabled { opacity: .6; cursor: wait; }
-  .btn-export svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .btn-export svg { width: 15px; height: 15px; flex-shrink: 0; }
 
   main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 30px; display: flex; flex-direction: column; gap: 16px; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
@@ -132,10 +132,6 @@
   <div class="campo"><label for="sel-pv">PV</label><select id="sel-pv"></select></div>
   <div class="campo"><label for="sel-sup">Supervisor / Equipe</label><select id="sel-sup"></select></div>
   <div class="campo"><label for="sel-cons">Consultor</label><select id="sel-cons"></select></div>
-  <button type="button" class="btn-export" id="btn-export" title="Baixa os pedidos do PV / equipe / consultor selecionado">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-    <span>Exportar Excel</span>
-  </button>
 </div>
 
 <main id="main"><div class="no-data">Carregando dados…</div></main>
@@ -186,6 +182,8 @@ let DATA = null, DET = null, UPDATED = null;
 let SEL_PV = null, SEL_SUP = TODOS, SEL_CONS = TODOS, SEL_KPI = 'RECEITA TOTAL', BUSCA = '';
 // Mapa nome do consultor -> nó (pra foto/nome de exibição nas tabelas)
 let PESSOAS = {};
+// Linhas de cada bloco (concluido / tramite) como estão na tela — usadas no Exportar Excel
+let BLOCOS = {};
 
 async function carregar() {
   try {
@@ -323,7 +321,10 @@ function bloco(cls, titulo, ls, k, mostraCons) {
         (mostraCons ? `<td><span class="cons"><span class="mini">${fotoHtml(p && p.foto, nomeV)}</span>${esc(nomeV)}</span></td>` : '') +
         `<td>${esc(l.produto)}</td><td>${esc(l.tipo)}</td><td><span class="etapa">${esc(l.etapa)}</span></td><td>${fmtData(l.data)}</td><td class="num">${fmtBRL(l.valor)}</td></tr>`;
     }).join('') + '</tbody></table>';
-  return `<div class="bloco ${cls}"><div class="bloco-cab"><span class="dot"></span>${titulo} · ${f.length} ${f.length === 1 ? 'item' : 'itens'}<span class="tot">${tot}</span></div><div class="tabela-wrap">${corpo}</div></div>`;
+  BLOCOS[cls] = { titulo, linhas: ord, kpi: k };
+  const btn = ord.length ? `<button type="button" class="btn-export" data-export="${cls}" title="Baixa em Excel os pedidos deste bloco">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span>Exportar Excel</span></button>` : '';
+  return `<div class="bloco ${cls}"><div class="bloco-cab"><span class="dot"></span>${titulo} · ${f.length} ${f.length === 1 ? 'item' : 'itens'}<span class="tot">${tot}</span>${btn}</div><div class="tabela-wrap">${corpo}</div></div>`;
 }
 
 function ligarEventos() {
@@ -331,6 +332,7 @@ function ligarEventos() {
     SEL_KPI = b.dataset.kpi; montarFiltros();
     const el = document.getElementById('detalhe'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
+  document.querySelectorAll('[data-export]').forEach(b => b.addEventListener('click', () => exportarBloco(b.dataset.export, b)));
   document.querySelectorAll('[data-cons]').forEach(b => b.addEventListener('click', () => { SEL_CONS = b.dataset.cons; montarFiltros(); }));
   document.querySelectorAll('[data-sup]').forEach(b => b.addEventListener('click', () => { SEL_SUP = b.dataset.sup; SEL_CONS = TODOS; montarFiltros(); }));
   const busca = document.getElementById('busca');
@@ -343,9 +345,9 @@ function ligarEventos() {
 }
 
 // ===================== Exportar Excel =====================
-// Baixa o nível selecionado (PV, equipe ou consultor): aba Resumo + uma aba
-// por KPI com os pedidos considerados (concluído e em trâmite).
-const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; // aspas duplas: o Apps Script corta '//' em aspas simples
+// Botão em cada bloco (Concluído / Em trâmite): baixa as linhas daquele bloco,
+// do KPI e do nível (PV / equipe / consultor) selecionados — respeitando a busca.
+const XLSX_URL = "https:" + "/" + "/cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; // sem barra dupla literal: o Apps Script corta o texto depois dela
 let xlsxPronto = null;
 function carregarXlsx() {
   if (window.XLSX) return Promise.resolve();
@@ -364,11 +366,11 @@ function dataBr(s) {
   return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes());
 }
 function nomeArquivo(t) {
-  return String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return String(t).normalize('NFD').replace(/\p{M}/gu, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
-async function exportarExcel() {
-  if (!DATA) return;
-  const btn = document.getElementById('btn-export');
+async function exportarBloco(cls, btn) {
+  const bl = BLOCOS[cls];
+  if (!DATA || !bl || !bl.linhas.length) return;
   const txt = btn.querySelector('span');
   btn.disabled = true; txt.textContent = 'Gerando…';
   try {
@@ -377,60 +379,36 @@ async function exportarExcel() {
     const pv = hier.find(p => p.pv === SEL_PV);
     const sup = pv && SEL_SUP !== TODOS ? pv.supervisors.find(s => s.supervisor === SEL_SUP) : null;
     const cons = sup && SEL_CONS !== TODOS ? sup.consultores.find(c => c.nome === SEL_CONS) : null;
-    const node = cons || sup || pv;
     const nivel = cons ? (cons.nome_exibicao || cons.nome) : (sup ? sup.supervisor : pv.pv);
-    const linhas = linhasDoNivel(pv, sup, cons);
-    const MOEDA = '"R$" #,##0.00', PCT = '0%', DATA_FMT = 'dd/mm/yyyy hh:mm';
-    const wb = XLSX.utils.book_new();
-
-    // Resumo
-    const res = [
-      ['Painel CRM — pedidos considerados'],
+    const k = bl.kpi, ls = bl.linhas;
+    const MOEDA = '"R$" #,##0.00', DATA_FMT = 'dd/mm/yyyy hh:mm';
+    const topo = [
+      ['Pedidos considerados em ' + k.nome + ' — ' + bl.titulo],
       ['Nível', cons ? pv.pv + ' · ' + sup.supervisor + ' · ' + nivel : (sup ? pv.pv + ' · ' + nivel : pv.pv)],
       ['Mês', DATA.periods.month.label],
       ['Dados atualizados em', UPDATED ? new Date(UPDATED).toLocaleString('pt-BR') : ''],
-      [],
-      ['Indicador', 'Realizado', 'Plano', '% do plano', 'Concluído', 'Em trâmite', 'Itens concluídos', 'Itens em trâmite'],
     ];
-    for (const k of KPIS) {
-      const ls = linhas.filter(l => l.cats.indexOf(k.id) >= 0);
-      const c = ls.filter(l => l.status === 'concluido'), t = ls.filter(l => l.status !== 'concluido');
-      const real = k.qtd ? node.revenue[k.id].qtd : node.revenue[k.id].receita;
-      const m = (node.meta || {})[k.metaKey] || 0;
-      res.push([k.nome + (k.qtd ? ' (qtd.)' : ''), real, m || null, m > 0 ? real / m : null,
-        k.qtd ? c.length : soma(c), k.qtd ? t.length : soma(t), c.length, t.length]);
+    if (BUSCA.trim()) topo.push(['Filtro da busca', BUSCA.trim()]);
+    topo.push([]);
+    const cab = ['Pedido', 'Cliente', 'Consultor', 'Equipe', 'Produto', 'Tipo de solicitação', 'Etapa do lead', 'Cadastro da linha', 'Valor'];
+    const ini = topo.length + 1; // linha do cabeçalho da tabela (1-based)
+    const rows = topo.concat([cab], ls.map(l => {
+      const p = PESSOAS[l.vendedor];
+      return [l.pedido, l.cliente, p ? (p.nome_exibicao || p.nome) : l.vendedor, l.supervisor || '',
+        l.produto, l.tipo, l.etapa, dataBr(l.data), l.valor || 0];
+    }));
+    rows.push([]);
+    rows.push(['Total · ' + ls.length + (ls.length === 1 ? ' item' : ' itens'), null, null, null, null, null, null, k.qtd ? ls.length + ' BL' : null, soma(ls)]);
+    const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
+    for (let r = ini + 1; r <= rows.length; r++) {
+      const v = ws['I' + r]; if (v && typeof v.v === 'number') v.z = MOEDA;
+      const d = ws['H' + r]; if (d && d.t === 'd') d.z = DATA_FMT;
     }
-    const wsR = XLSX.utils.aoa_to_sheet(res);
-    for (let i = 0; i < KPIS.length; i++) {
-      const r = 6 + i; const qtd = KPIS[i].qtd;
-      ['B', 'C', 'E', 'F'].forEach(col => { const cell = wsR[col + (r + 1)]; if (cell && typeof cell.v === 'number' && !qtd) cell.z = MOEDA; });
-      const p = wsR['D' + (r + 1)]; if (p && typeof p.v === 'number') p.z = PCT;
-    }
-    wsR['!cols'] = [{ wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 11 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 15 }];
-    XLSX.utils.book_append_sheet(wb, wsR, 'Resumo');
-
-    // Uma aba por KPI
-    const cab = ['Situação', 'Pedido', 'Cliente', 'Consultor', 'Equipe', 'Produto', 'Tipo de solicitação', 'Etapa do lead', 'Cadastro da linha', 'Valor'];
-    for (const k of KPIS) {
-      const ls = linhas.filter(l => l.cats.indexOf(k.id) >= 0)
-        .sort((a, b) => ((a.status === 'concluido' ? 0 : 1) - (b.status === 'concluido' ? 0 : 1)) || (b.valor - a.valor) || a.pedido.localeCompare(b.pedido));
-      const rows = [cab].concat(ls.map(l => {
-        const p = PESSOAS[l.vendedor];
-        return [l.status === 'concluido' ? 'Concluído' : 'Em trâmite', l.pedido, l.cliente, p ? (p.nome_exibicao || p.nome) : l.vendedor,
-          l.supervisor || '', l.produto, l.tipo, l.etapa, dataBr(l.data), l.valor || 0];
-      }));
-      rows.push([]);
-      rows.push(['Total', null, null, null, null, null, null, null, k.qtd ? ls.length + ' BL' : null, soma(ls)]);
-      const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
-      for (let r = 2; r <= rows.length; r++) {
-        const v = ws['J' + r]; if (v && typeof v.v === 'number') v.z = MOEDA;
-        const d = ws['I' + r]; if (d && d.t === 'd') d.z = DATA_FMT;
-      }
-      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 40 }, { wch: 28 }, { wch: 18 }, { wch: 38 }, { wch: 18 }, { wch: 30 }, { wch: 17 }, { wch: 14 }];
-      ws['!autofilter'] = { ref: 'A1:J' + (ls.length + 1) };
-      XLSX.utils.book_append_sheet(wb, ws, k.nome);
-    }
-    XLSX.writeFile(wb, 'Pedidos_' + nomeArquivo(nivel) + '_' + nomeArquivo(DATA.periods.month.label) + '.xlsx');
+    ws['!cols'] = [{ wch: 22 }, { wch: 40 }, { wch: 28 }, { wch: 18 }, { wch: 38 }, { wch: 18 }, { wch: 30 }, { wch: 17 }, { wch: 14 }];
+    ws['!autofilter'] = { ref: 'A' + ini + ':I' + (ini + ls.length) };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, bl.titulo);
+    XLSX.writeFile(wb, 'Pedidos_' + nomeArquivo(nivel) + '_' + nomeArquivo(k.nome) + '_' + nomeArquivo(bl.titulo) + '_' + nomeArquivo(DATA.periods.month.label) + '.xlsx');
   } catch (e) {
     console.error(e);
     btn.disabled = false; txt.textContent = 'Erro — tente de novo';
@@ -439,7 +417,6 @@ async function exportarExcel() {
   }
   btn.disabled = false; txt.textContent = 'Exportar Excel';
 }
-document.getElementById('btn-export').addEventListener('click', exportarExcel);
 
 document.getElementById('sel-pv').addEventListener('change', e => { SEL_PV = e.target.value; SEL_SUP = TODOS; SEL_CONS = TODOS; montarFiltros(); });
 document.getElementById('sel-sup').addEventListener('change', e => { SEL_SUP = e.target.value; SEL_CONS = TODOS; montarFiltros(); });
