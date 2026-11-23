@@ -41,6 +41,11 @@
   .campo label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
   .campo select, .campo input { font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text-primary); font-family: inherit; min-height: 40px; }
   .campo select:disabled { color: var(--text-muted); background: #f7f5f8; }
+  .btn-export { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 9px 16px; border-radius: 8px;
+    border: 1px solid #1d6f42; background: #1d6f42; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-export:hover { background: #185c37; }
+  .btn-export:disabled { opacity: .6; cursor: wait; }
+  .btn-export svg { width: 18px; height: 18px; flex-shrink: 0; }
 
   main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 30px; display: flex; flex-direction: column; gap: 16px; }
   .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
@@ -127,6 +132,10 @@
   <div class="campo"><label for="sel-pv">PV</label><select id="sel-pv"></select></div>
   <div class="campo"><label for="sel-sup">Supervisor / Equipe</label><select id="sel-sup"></select></div>
   <div class="campo"><label for="sel-cons">Consultor</label><select id="sel-cons"></select></div>
+  <button type="button" class="btn-export" id="btn-export" title="Baixa os pedidos do PV / equipe / consultor selecionado">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+    <span>Exportar Excel</span>
+  </button>
 </div>
 
 <main id="main"><div class="no-data">Carregando dados…</div></main>
@@ -332,6 +341,105 @@ function ligarEventos() {
     const nb = document.getElementById('busca'); nb.focus(); try { nb.setSelectionRange(pos, pos); } catch (e) {}
   });
 }
+
+// ===================== Exportar Excel =====================
+// Baixa o nível selecionado (PV, equipe ou consultor): aba Resumo + uma aba
+// por KPI com os pedidos considerados (concluído e em trâmite).
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+let xlsxPronto = null;
+function carregarXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  if (!xlsxPronto) xlsxPronto = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = XLSX_URL; s.onload = () => resolve(); s.onerror = () => { xlsxPronto = null; reject(new Error('não carregou a biblioteca do Excel')); };
+    document.head.appendChild(s);
+  });
+  return xlsxPronto;
+}
+// "2026-11-16 18:11:12" (UTC) -> Date com o horário de Brasília
+function dataBr(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
+  if (!m) return s || '';
+  const u = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 3 * 3600000);
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes());
+}
+function nomeArquivo(t) {
+  return String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+async function exportarExcel() {
+  if (!DATA) return;
+  const btn = document.getElementById('btn-export');
+  const txt = btn.querySelector('span');
+  btn.disabled = true; txt.textContent = 'Gerando…';
+  try {
+    await carregarXlsx();
+    const hier = DATA.periods.month.hierarchy || [];
+    const pv = hier.find(p => p.pv === SEL_PV);
+    const sup = pv && SEL_SUP !== TODOS ? pv.supervisors.find(s => s.supervisor === SEL_SUP) : null;
+    const cons = sup && SEL_CONS !== TODOS ? sup.consultores.find(c => c.nome === SEL_CONS) : null;
+    const node = cons || sup || pv;
+    const nivel = cons ? (cons.nome_exibicao || cons.nome) : (sup ? sup.supervisor : pv.pv);
+    const linhas = linhasDoNivel(pv, sup, cons);
+    const MOEDA = '"R$" #,##0.00', PCT = '0%', DATA_FMT = 'dd/mm/yyyy hh:mm';
+    const wb = XLSX.utils.book_new();
+
+    // Resumo
+    const res = [
+      ['Painel CRM — pedidos considerados'],
+      ['Nível', cons ? pv.pv + ' · ' + sup.supervisor + ' · ' + nivel : (sup ? pv.pv + ' · ' + nivel : pv.pv)],
+      ['Mês', DATA.periods.month.label],
+      ['Dados atualizados em', UPDATED ? new Date(UPDATED).toLocaleString('pt-BR') : ''],
+      [],
+      ['Indicador', 'Realizado', 'Plano', '% do plano', 'Concluído', 'Em trâmite', 'Itens concluídos', 'Itens em trâmite'],
+    ];
+    for (const k of KPIS) {
+      const ls = linhas.filter(l => l.cats.indexOf(k.id) >= 0);
+      const c = ls.filter(l => l.status === 'concluido'), t = ls.filter(l => l.status !== 'concluido');
+      const real = k.qtd ? node.revenue[k.id].qtd : node.revenue[k.id].receita;
+      const m = (node.meta || {})[k.metaKey] || 0;
+      res.push([k.nome + (k.qtd ? ' (qtd.)' : ''), real, m || null, m > 0 ? real / m : null,
+        k.qtd ? c.length : soma(c), k.qtd ? t.length : soma(t), c.length, t.length]);
+    }
+    const wsR = XLSX.utils.aoa_to_sheet(res);
+    for (let i = 0; i < KPIS.length; i++) {
+      const r = 6 + i; const qtd = KPIS[i].qtd;
+      ['B', 'C', 'E', 'F'].forEach(col => { const cell = wsR[col + (r + 1)]; if (cell && typeof cell.v === 'number' && !qtd) cell.z = MOEDA; });
+      const p = wsR['D' + (r + 1)]; if (p && typeof p.v === 'number') p.z = PCT;
+    }
+    wsR['!cols'] = [{ wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 11 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, wsR, 'Resumo');
+
+    // Uma aba por KPI
+    const cab = ['Situação', 'Pedido', 'Cliente', 'Consultor', 'Equipe', 'Produto', 'Tipo de solicitação', 'Etapa do lead', 'Cadastro da linha', 'Valor'];
+    for (const k of KPIS) {
+      const ls = linhas.filter(l => l.cats.indexOf(k.id) >= 0)
+        .sort((a, b) => ((a.status === 'concluido' ? 0 : 1) - (b.status === 'concluido' ? 0 : 1)) || (b.valor - a.valor) || a.pedido.localeCompare(b.pedido));
+      const rows = [cab].concat(ls.map(l => {
+        const p = PESSOAS[l.vendedor];
+        return [l.status === 'concluido' ? 'Concluído' : 'Em trâmite', l.pedido, l.cliente, p ? (p.nome_exibicao || p.nome) : l.vendedor,
+          l.supervisor || '', l.produto, l.tipo, l.etapa, dataBr(l.data), l.valor || 0];
+      }));
+      rows.push([]);
+      rows.push(['Total', null, null, null, null, null, null, null, k.qtd ? ls.length + ' BL' : null, soma(ls)]);
+      const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
+      for (let r = 2; r <= rows.length; r++) {
+        const v = ws['J' + r]; if (v && typeof v.v === 'number') v.z = MOEDA;
+        const d = ws['I' + r]; if (d && d.t === 'd') d.z = DATA_FMT;
+      }
+      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 40 }, { wch: 28 }, { wch: 18 }, { wch: 38 }, { wch: 18 }, { wch: 30 }, { wch: 17 }, { wch: 14 }];
+      ws['!autofilter'] = { ref: 'A1:J' + (ls.length + 1) };
+      XLSX.utils.book_append_sheet(wb, ws, k.nome);
+    }
+    XLSX.writeFile(wb, 'Pedidos_' + nomeArquivo(nivel) + '_' + nomeArquivo(DATA.periods.month.label) + '.xlsx');
+  } catch (e) {
+    console.error(e);
+    btn.disabled = false; txt.textContent = 'Erro — tente de novo';
+    setTimeout(() => { txt.textContent = 'Exportar Excel'; }, 4000);
+    return;
+  }
+  btn.disabled = false; txt.textContent = 'Exportar Excel';
+}
+document.getElementById('btn-export').addEventListener('click', exportarExcel);
 
 document.getElementById('sel-pv').addEventListener('change', e => { SEL_PV = e.target.value; SEL_SUP = TODOS; SEL_CONS = TODOS; montarFiltros(); });
 document.getElementById('sel-sup').addEventListener('change', e => { SEL_SUP = e.target.value; SEL_CONS = TODOS; montarFiltros(); });
