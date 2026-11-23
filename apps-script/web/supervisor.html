@@ -345,7 +345,7 @@ function ligarEventos() {
 // ===================== Exportar Excel =====================
 // Baixa o nível selecionado (PV, equipe ou consultor): aba Resumo + uma aba
 // por KPI com os pedidos considerados (concluído e em trâmite).
-const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; // aspas duplas: o Apps Script corta '//' em aspas simples
 let xlsxPronto = null;
 function carregarXlsx() {
   if (window.XLSX) return Promise.resolve();
