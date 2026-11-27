@@ -18,6 +18,8 @@
  *                           tendo sido cadastrados antes (um por linha)
  *   - aba PRODUTOS_NAO_REMUNERADOS → nome do produto (um por linha) que não
  *                           conta em nenhum KPI de receita (ex.: IP FIXO)
+ *   - aba PRODUTOS_BANDA_LARGA → nome do produto (um por linha) que conta como
+ *                           Banda Larga mesmo fora da categoria de BL (ex.: FWA)
  *   - aba METAS_EQUIPES / METAS_USUARIOS → plano comercial do mês
  *
  * Etapas, classificação de receita, hierarquia, fotos e as telas vêm do
@@ -318,6 +320,7 @@ function Classificador_(cfg) {
   this.nonMov = toSet_(cfg.non_movement_stages);
   this.miscatBL = toSet_(cfg.miscategorized_as_banda_larga);
   this.naoRemunerados = {}; // preenchido pela aba PRODUTOS_NAO_REMUNERADOS
+  this.bandaLargaExtra = {}; // preenchido pela aba PRODUTOS_BANDA_LARGA
 }
 
 Classificador_.prototype.naoRemunerado = function (prodName) {
@@ -332,6 +335,10 @@ Classificador_.prototype.isMovement = function (stageName) {
 Classificador_.prototype.lineMatches = function (categName, reqName, cat, prodName) {
   if (this.naoRemunerado(prodName)) return false;
   if (cat === 'BANDA LARGA' && prodName !== null && prodName !== undefined && this.miscatBL[norm_(prodName)]) return false;
+  // produtos da aba PRODUTOS_BANDA_LARGA: contam como BL pelo nome (o tipo de solicitação continua valendo)
+  if (cat === 'BANDA LARGA' && prodName !== null && prodName !== undefined && this.bandaLargaExtra[norm_(prodName)]) {
+    return !!this.solic[cat][norm_(reqName)];
+  }
   return !!this.prod[cat][norm_(categName)] && !!this.solic[cat][norm_(reqName)];
 };
 
@@ -781,7 +788,12 @@ function lerPlanilha_() {
     var n = norm_(r[0]);
     if (n) naoRem[n] = true;
   });
-  return { pedidos: pedidos, naoRemunerados: naoRem, metasEquipes: valores('METAS_EQUIPES'), metasUsuarios: valores('METAS_USUARIOS') };
+  var blExtra = {};
+  valores('PRODUTOS_BANDA_LARGA').forEach(function (r) {
+    var n = norm_(r[0]);
+    if (n) blExtra[n] = true;
+  });
+  return { pedidos: pedidos, naoRemunerados: naoRem, bandaLargaExtra: blExtra, metasEquipes: valores('METAS_EQUIPES'), metasUsuarios: valores('METAS_USUARIOS') };
 }
 
 /** Monta o mesmo JSON que o /api/data do app.py devolvia em "data". */
@@ -794,6 +806,7 @@ function collectData_(now, planilha) {
     metas: new Metas_(cfg.metas_fields, planilha.metasEquipes, planilha.metasUsuarios),
   };
   ctx.cls.naoRemunerados = planilha.naoRemunerados || {};
+  ctx.cls.bandaLargaExtra = planilha.bandaLargaExtra || {};
   ctx.uidMap = buildUserIdMap_(cfg);
   ctx.pedidosMes = planilha.pedidos;
   ctx.auditoria = [];
@@ -843,7 +856,7 @@ function exportarRenovacaoOutubro() {
 function exportarAtendimentosRenovacao_(ano, mes) {
   var cfg = getConfig_();
   var cls = new Classificador_(cfg);
-  try { cls.naoRemunerados = lerPlanilha_().naoRemunerados || {}; } catch (e) { Logger.log(e); }
+  try { var pl = lerPlanilha_(); cls.naoRemunerados = pl.naoRemunerados || {}; cls.bandaLargaExtra = pl.bandaLargaExtra || {}; } catch (e) { Logger.log(e); }
   var uidMap = buildUserIdMap_(cfg);
   var sysIds = toSet_(SYSTEM_USER_IDS);
   // Mês no horário de Brasília (UTC-3)
